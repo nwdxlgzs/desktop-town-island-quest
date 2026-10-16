@@ -1,0 +1,597 @@
+{
+  "click": [
+    {
+      "label": "认清本次清单",
+      "help": "本次需要{color}标签的资料。先点一个看看。",
+      "target": ".parcel-grid"
+    },
+    {
+      "label": "收齐所需资料",
+      "help": "继续单击同色标签的资料，完成区会显示数量。选错不会清空进度。",
+      "target": ".parcel-grid"
+    }
+  ],
+  "double": [
+    {
+      "label": "找到要打开的资料",
+      "help": "找到「{file}」，把鼠标放在图标上。",
+      "target": "#toolbox"
+    },
+    {
+      "label": "连续点两下",
+      "help": "在同一个图标上快速双击左键，打开资料。",
+      "target": "#toolbox"
+    }
+  ],
+  "right": [
+    {
+      "label": "打开资料的操作菜单",
+      "help": "在「{item}」上单击鼠标右键。",
+      "target": "#fragile-parcel"
+    },
+    {
+      "label": "选择对应操作",
+      "help": "菜单出现后，用左键选择「{label}」。",
+      "target": "#context-menu"
+    }
+  ],
+  "wheel": [
+    {
+      "label": "在清单内滚动",
+      "help": "鼠标放在资料清单里，向下滚动滚轮。",
+      "target": "#cargo-list"
+    },
+    {
+      "label": "打开目标条目",
+      "help": "找到「{cargoTarget}」后单击它。滚动时页面外侧不会替你完成练习。",
+      "target": "#cargo-list"
+    }
+  ],
+  "middle": [
+    {
+      "label": "找到滚轮按键",
+      "help": "把鼠标放在信号灯上，向下按滚轮，不是转动滚轮。",
+      "target": "#beacon"
+    },
+    {
+      "label": "松开点亮信号灯",
+      "help": "按下后松开中键。触摸板没有中键时，需要使用实体鼠标。",
+      "target": "#beacon"
+    }
+  ],
+  "hover": [
+    {
+      "label": "停在工具图标上",
+      "help": "鼠标移到「{target}」并停留片刻，等待说明出现。",
+      "target": "#hover-supply"
+    },
+    {
+      "label": "读懂用途再选择",
+      "help": "读一遍工具提示，在下方选择与提示一致的说明。",
+      "target": "#hover-answer"
+    }
+  ],
+  "select": [
+    {
+      "label": "拖选目标文字",
+      "help": "按住左键，从「{text}」的第一个字拖到最后一个字，再松开。不要带上前后的文字。",
+      "target": "#selection-text"
+    }
+  ],
+  "drag": [
+    {
+      "label": "拿起便签",
+      "help": "在「{note}」上按住左键，保持按下并向右拖动。",
+      "target": "#drag-note"
+    },
+    {
+      "label": "放到收集区",
+      "help": "指针进入「{box}」后松开左键。",
+      "target": "#drop-box"
+    }
+  ],
+  "typing": [
+    {
+      "label": "从目标句开始",
+      "help": "点击输入框，照着上方目标输入。留意空格、大小写和英文标点。",
+      "target": "#typing-input"
+    },
+    {
+      "label": "核对整句",
+      "help": "目标是「{expected}」。输入完全一致后会自动完成，无需额外提交。",
+      "target": "#typing-input"
+    }
+  ],
+  "chinese": [
+    {
+      "label": "切换中文输入法",
+      "help": "点击输入框，用中文输入法输入目标句。拼音候选要先确认。",
+      "target": "#typing-input"
+    },
+    {
+      "label": "核对中文标点",
+      "help": "目标是「{expected}」。注意句末是中文句号。",
+      "target": "#typing-input"
+    }
+  ],
+  "repair": [
+    {
+      "label": "定位并删除多余字符",
+      "help": "把光标移到多余字母后面，用 Backspace 删除它。",
+      "target": "#typing-input"
+    },
+    {
+      "label": "核对并按 Enter",
+      "help": "改为「{expected}」后按 Enter 提交；不需要重打整句。",
+      "target": "#typing-input"
+    }
+  ],
+  "tab": [
+    {
+      "label": "填好第一个框再 Tab",
+      "help": "在{nameLabel}输入「{name}」，按 Tab 转到{countLabel}。",
+      "target": "#order-name"
+    },
+    {
+      "label": "填好后返回",
+      "help": "输入「{count}」，再按 Shift+Tab 返回第一个输入框。",
+      "target": "#order-count"
+    },
+    {
+      "label": "按 Enter 提交",
+      "help": "检查两项内容，在第一个输入框按 Enter。",
+      "target": "#order-name"
+    }
+  ],
+  "copy": [
+    {
+      "label": "选中原始资料",
+      "help": "点击左侧文字框，按 Ctrl+A 全选。",
+      "target": "#source-input"
+    },
+    {
+      "label": "复制一份",
+      "help": "按 Ctrl+C，原始资料会保留在左侧。",
+      "target": "#source-input"
+    },
+    {
+      "label": "粘贴到备份区",
+      "help": "点击右侧文字框，再按 Ctrl+V。不要手工重输文字。",
+      "target": "#destination-input"
+    }
+  ],
+  "cut": [
+    {
+      "label": "选中要移动的资料",
+      "help": "点击左侧文字框，按 Ctrl+A 全选。",
+      "target": "#source-input"
+    },
+    {
+      "label": "剪切资料",
+      "help": "按 Ctrl+X，原位置的文字会被移走。",
+      "target": "#source-input"
+    },
+    {
+      "label": "粘贴到归档区",
+      "help": "点击右侧文字框，按 Ctrl+V。剪切与复制的区别是原位置是否保留。",
+      "target": "#destination-input"
+    }
+  ],
+  "undo": [
+    {
+      "label": "先做一次修改",
+      "help": "点击便签，按 End 到末尾，输入「{mark}」。",
+      "target": "#undo-input"
+    },
+    {
+      "label": "撤销刚才的修改",
+      "help": "按 Ctrl+Z，让文字恢复为「{original}」。不用自己删除标点。",
+      "target": "#undo-input"
+    }
+  ],
+  "save": [
+    {
+      "label": "写好记录",
+      "help": "输入「{expected}」。先把中文输入法的候选确认下来。",
+      "target": "#save-input"
+    },
+    {
+      "label": "保存记录",
+      "help": "保持在练习中，按 Ctrl+S。保存成功后可以下载这份记录。",
+      "target": "#save-input"
+    }
+  ],
+  "crop": [
+    {
+      "label": "从图卡一角开始",
+      "help": "把鼠标移到图卡左上角附近，按住左键。",
+      "target": "#crop-canvas"
+    },
+    {
+      "label": "框住完整图卡",
+      "help": "拖到右下角再松开，保留图卡四个角，尽量少带入背景。",
+      "target": "#crop-canvas"
+    }
+  ],
+  "capture": [
+    {
+      "label": "准备一张安全截图",
+      "help": "使用系统截图工具，只截需要的操作区域，避开姓名、账号和聊天内容。统信 UOS 可按 Ctrl+Alt+A 打开截图工具，框选后复制或保存。",
+      "target": "#image-receiver"
+    },
+    {
+      "label": "粘贴或选入截图",
+      "help": "点击接收区按 Ctrl+V，或用下方“选择截图文件”。图片只在本地显示。",
+      "target": "#image-receiver"
+    }
+  ],
+  "delivery": [
+    {
+      "label": "打开消息文件",
+      "help": "双击「{file}」，进入消息编辑区。",
+      "target": "#message-file"
+    },
+    {
+      "label": "修改这条消息",
+      "help": "用 Ctrl+A 选中旧消息，输入「{expected}」。",
+      "target": "#message-input"
+    },
+    {
+      "label": "保存后派送",
+      "help": "按 Ctrl+S，确认标题栏显示保存成功。",
+      "target": "#message-input"
+    }
+  ],
+  "files": [
+    {
+      "label": "建立资料文件夹",
+      "help": "在资料区新建「{folder}」，输入名称后按 Enter。名称错了可右键重命名。",
+      "target": "#folder-name, #new-folder"
+    },
+    {
+      "label": "选中清单文件",
+      "help": "单击「{firstFile}」，按住 Ctrl 再选「{otherFiles}」。选错可 Ctrl+单击取消。",
+      "target": "#fm-items"
+    },
+    {
+      "label": "{transferLabel}并核对内容",
+      "help": "{transferHelp}。双击只打开文件夹。完成后点“检查整理结果”。",
+      "target": ".fm-toolbar, #fm-items"
+    }
+  ],
+  "document": [
+    {
+      "label": "排好标题与正文格式",
+      "help": "点击标题，Ctrl+A 全选；再设置{tools}。工具栏会保留已选中文字。",
+      "target": "#word-title, .word-toolbar"
+    },
+    {
+      "label": "补全文档正文",
+      "help": "下方资料单给出了两行内容。可以分行输入，标点也要保留。",
+      "target": "#word-body"
+    },
+    {
+      "label": "检查后保存",
+      "help": "看一眼下方排版预览，确认标题和正文后按 Ctrl+S。",
+      "target": ".word-preview"
+    }
+  ],
+  "sheet": [
+    {
+      "label": "录入三项数据",
+      "help": "按资料单把数量填入 B2、B3、B4。数据的顺序要与左侧名称一致。",
+      "target": ".sheet-table"
+    },
+    {
+      "label": "用 Tab 移动格子",
+      "help": "在单元格内按 Tab，继续到下一格；不用每格都重新点鼠标。",
+      "target": ".sheet-table"
+    },
+    {
+      "label": "让表格计算合计",
+      "help": "在 B5 输入 =SUM(B2:B4)，按 Enter。不要直接填写心算结果。",
+      "target": "[data-cell='B5']"
+    }
+  ],
+  "search": [
+    {
+      "label": "打开查找替换",
+      "help": "点击文档，按 Ctrl+H 打开替换面板。",
+      "target": "#search-document"
+    },
+    {
+      "label": "替换所有旧词",
+      "help": "查找「{find}」，替换为「{replace}」，再点“全部替换”。",
+      "target": "#search-panel"
+    },
+    {
+      "label": "核对并保存",
+      "help": "确认正文中的旧词都更新了，再按 Ctrl+S。",
+      "target": "#search-document"
+    }
+  ],
+  "settings": [
+    {
+      "label": "选择阅读主题",
+      "help": "本题需要{theme}主题，选中对应选项。",
+      "target": ".settings-form fieldset"
+    },
+    {
+      "label": "调整文字大小",
+      "help": "把文字大小改成{size}。",
+      "target": "#setting-size"
+    },
+    {
+      "label": "开启保存并应用",
+      "help": "勾选“启用自动保存”，点击“应用设置”，看看预览的变化。",
+      "target": "#apply-settings"
+    }
+  ],
+  "mail": [
+    {
+      "label": "确认收件人与主题",
+      "help": "收件人填「{to}」，主题填「{subject}」。地址相似也要逐字核对。",
+      "target": "#mail-to, #mail-subject"
+    },
+    {
+      "label": "写清这封信的内容",
+      "help": "按下方任务单写正文，避免空白邮件或只写“见附件”。",
+      "target": "#mail-body"
+    },
+    {
+      "label": "带上附件再发送",
+      "help": "附上「{attachment}」，检查完成后发送练习邮件。",
+      "target": "#mail-attachment, #mail-send"
+    }
+  ],
+  "keys": [
+    {
+      "label": "到行首补开头",
+      "help": "点击文本框，按 Home，输入「{prefix}」。",
+      "target": "#keys-input"
+    },
+    {
+      "label": "到行末补结尾",
+      "help": "按 End，输入「{suffix}」。",
+      "target": "#keys-input"
+    },
+    {
+      "label": "核对后提交",
+      "help": "对照目标便签，点击“提交便签”。",
+      "target": "#keys-submit"
+    }
+  ],
+  "presentation": [
+    {
+      "label": "选版式、写标题",
+      "help": "选择“标题与图片”版式，标题填「{title}」。",
+      "target": "#slide-layout, #slide-title"
+    },
+    {
+      "label": "拖入主题插图",
+      "help": "按住左侧图片，拖到幻灯片的图片区域，再松开。",
+      "target": "#slide-art, #slide-drop"
+    },
+    {
+      "label": "预览分享效果",
+      "help": "点“预览放映”，看看图片和标题是否都已呈现。",
+      "target": "#slide-play"
+    }
+  ],
+  "browser": [
+    {
+      "label": "输入网址或关键词",
+      "help": "地址栏输入「{address}」并按 Enter，或直接搜索「{query}」。",
+      "target": "#browser-address, #browser-bookmark"
+    },
+    {
+      "label": "比较搜索结果",
+      "help": "搜索「{query}」，比较结果的标题、来源和日期。",
+      "target": "#browser-query, #browser-results"
+    },
+    {
+      "label": "打开需要的资料",
+      "help": "查阅「{targetTitle}」，确认来源后点底部“检查学习记录”。",
+      "target": "#browser-results, #browser-page, #browser-check"
+    }
+  ],
+  "paint": [
+    {
+      "label": "选好工具和颜色",
+      "help": "选择“矩形”工具与蓝色，工具会显示选中状态。",
+      "target": ".paint-ribbon"
+    },
+    {
+      "label": "拖绘图形",
+      "help": "在虚线框左上角按下，拖到右下角后松开。",
+      "target": "#paint-canvas"
+    },
+    {
+      "label": "保存自己的作品",
+      "help": "确认图形覆盖虚线区域，点击“保存图片”。",
+      "target": "#paint-save"
+    }
+  ],
+  "pdf": [
+    {
+      "label": "从缩略图打开第二页",
+      "help": "点击左侧第二页，找到本次要读的段落。",
+      "target": "[data-pdf-page='2']"
+    },
+    {
+      "label": "搜索关键词",
+      "help": "在搜索框输入「{query}」，确认正文出现搜索标记。",
+      "target": "#pdf-search"
+    },
+    {
+      "label": "留下高亮批注",
+      "help": "开启“高亮批注”，再点击包含关键词的段落。",
+      "target": "#pdf-highlight, #pdf-target"
+    }
+  ],
+  "resize": [
+    {
+      "label": "移动窗口",
+      "help": "按住蓝色标题栏向右拖，让窗口离开原来的位置。",
+      "target": "#window-title"
+    },
+    {
+      "label": "拉大窗口",
+      "help": "按住窗口右下角的三角标记，向右下方拖动。",
+      "target": "#window-resizer"
+    }
+  ],
+  "browser-tabs": [
+    {
+      "label": "先搜索两份资料",
+      "help": "搜索「{query}」。本题要比较「{targetTitle}」。",
+      "target": "#browser-query, #browser-address"
+    },
+    {
+      "label": "保留两个资料标签",
+      "help": "在结果旁点“在新标签页打开”，把两份资料分别打开；原搜索页会保留。",
+      "target": "#browser-results, #browser-tabs"
+    },
+    {
+      "label": "切换阅读并检查",
+      "help": "点击两个标签，分别查看正文与来源，保持它们打开，再检查学习记录。",
+      "target": "#browser-tabs, #browser-check"
+    }
+  ],
+  "browser-bookmark": [
+    {
+      "label": "找到要收藏的指南",
+      "help": "搜索「{query}」，打开「{targetTitle}」。",
+      "target": "#browser-address, #browser-page"
+    },
+    {
+      "label": "命名并保存收藏",
+      "help": "点地址栏旁的星星，名称填「{bookmarkName}」，文件夹选「{bookmarkFolder}」，保存。",
+      "target": "#browser-star, #browser-bookmark-editor"
+    },
+    {
+      "label": "从书签重新打开",
+      "help": "点主页，再点击书签栏中刚保存的收藏，最后检查学习记录。",
+      "target": "#browser-bookmarks, #browser-home, #browser-check"
+    }
+  ],
+  "browser-find": [
+    {
+      "label": "打开指南正文",
+      "help": "搜索「{query}」，打开「{targetTitle}」。",
+      "target": "#browser-address, #browser-page"
+    },
+    {
+      "label": "使用页内查找",
+      "help": "点“页内查找”或 Ctrl+F，输入「{find}」。搜索框会显示匹配数量。",
+      "target": "#browser-find-toggle, #browser-find-panel"
+    },
+    {
+      "label": "查看下一处匹配",
+      "help": "点查找栏向下箭头，比较下一处关键词所在的段落，再检查记录。",
+      "target": "#browser-find-next, #browser-check"
+    }
+  ],
+  "browser-download": [
+    {
+      "label": "找到配套学习资料",
+      "help": "搜索「{query}」，打开「{targetTitle}」。",
+      "target": "#browser-address, #browser-page"
+    },
+    {
+      "label": "下载并合理命名",
+      "help": "点正文中的下载。文件名填「{downloadName}」，位置选「{downloadFolder}」，保存。",
+      "target": "#browser-download-file, #browser-save"
+    },
+    {
+      "label": "打开下载文件核对",
+      "help": "从下载记录打开刚保存的文件，确认内容后检查学习记录。",
+      "target": "#browser-downloads-toggle, #browser-downloads, #browser-check"
+    }
+  ],
+  "sheet-sort": [
+    {
+      "label": "选择整表排序方式",
+      "help": "排序依据选「{valueHeader}」，顺序选{sortOrderLabel}。",
+      "target": "#data-sort-field, #data-sort-order"
+    },
+    {
+      "label": "应用并观察整行",
+      "help": "点击“应用排序”，观察名称、数值和状态一起移动；不要只排序数字一列。",
+      "target": "#data-sort, .data-grid"
+    },
+    {
+      "label": "保存有序数据",
+      "help": "确认排列方向后点击保存，或按 Ctrl+S。选错可以修改条件再排序。",
+      "target": "#data-save"
+    }
+  ],
+  "sheet-filter": [
+    {
+      "label": "打开状态筛选",
+      "help": "点击“筛选状态”，取消全选，只勾选「{filterValue}」，点确定。",
+      "target": "#data-filter-toggle, #data-filter-panel"
+    },
+    {
+      "label": "检查保留的记录",
+      "help": "只显示「{filterValue}」的记录。其他数据只是隐藏，重新全选可恢复。",
+      "target": ".data-grid, #data-status"
+    },
+    {
+      "label": "保存筛选结果",
+      "help": "确认记录后点击保存，或按 Ctrl+S。",
+      "target": "#data-save"
+    }
+  ],
+  "sheet-chart": [
+    {
+      "label": "选中名称与数值",
+      "help": "单击 A1，按住 Shift 单击 B6，或从 A1 拖到 B6，选区需包含标题。",
+      "target": ".data-grid"
+    },
+    {
+      "label": "插入合适的图表",
+      "help": "切到“插入”，选择{chartTypeLabel}再点“插入图表”。图形会按真实数值绘制。",
+      "target": "[data-data-tab=\"insert\"], #data-insert"
+    },
+    {
+      "label": "写清图表标题",
+      "help": "标题填「{chartTitle}」，确认后点击保存或按 Ctrl+S。",
+      "target": "#data-chart-title, #data-save"
+    }
+  ],
+  "mail-reply": [
+    {
+      "label": "读清伙伴的请求",
+      "help": "在收件箱打开「{requestSubject}」，读清需要回复什么，再点回复。",
+      "target": "#reply-list, #reply-message"
+    },
+    {
+      "label": "用自己的话回应",
+      "help": "回复应说清「{replyPoints}」，不需要逐字照抄。收件人和原主题已带入。",
+      "target": "#reply-editor"
+    },
+    {
+      "label": "核对附件再发送",
+      "help": "点添加附件，只选「{attachment}」，不要发送无关草稿，再发送回复。",
+      "target": "#reply-attach, #reply-file-picker, #reply-send"
+    }
+  ],
+  "calendar": [
+    {
+      "label": "选对日期与时间",
+      "help": "安排在 {eventDate} {eventStart}–{eventEnd}，已有活动不要改动。日期不在本周可翻到下一周。",
+      "target": ".calendar-toolbar, #calendar-grid, #calendar-editor"
+    },
+    {
+      "label": "写清活动与地点",
+      "help": "标题填「{eventTitle}」，地点填「{eventPlace}」。起止时间不正确可以继续修改。",
+      "target": "#calendar-editor"
+    },
+    {
+      "label": "设置提醒并核对",
+      "help": "提醒设为提前 {eventReminder} 分钟，保存日程，再点击“检查安排”。",
+      "target": "#calendar-reminder, #calendar-save, #calendar-check"
+    }
+  ]
+}

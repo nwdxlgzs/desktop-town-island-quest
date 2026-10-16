@@ -1,0 +1,454 @@
+{
+  "stations": [
+    {
+      "id": "mouse",
+      "name": "鼠标码头",
+      "subtitle": "让每一次点击，都恰到好处",
+      "icon": "mouse",
+      "color": "#278879",
+      "pale": "#e1f1e8"
+    },
+    {
+      "id": "text",
+      "name": "文字工坊",
+      "subtitle": "选中、拖动，让文字听你的话",
+      "icon": "type",
+      "color": "#b18a26",
+      "pale": "#fff1c9"
+    },
+    {
+      "id": "keyboard",
+      "name": "键盘工坊",
+      "subtitle": "用指尖记录数字学习的新发现",
+      "icon": "keyboard",
+      "color": "#c46f51",
+      "pale": "#ffe8dc"
+    },
+    {
+      "id": "shortcuts",
+      "name": "快捷实验室",
+      "subtitle": "少一点步骤，多一点魔法",
+      "icon": "command",
+      "color": "#8c72b0",
+      "pale": "#ece5f5"
+    },
+    {
+      "id": "screenshot",
+      "name": "截图照相馆",
+      "subtitle": "把重要的一刻，框进图片",
+      "icon": "camera",
+      "color": "#4d88b0",
+      "pale": "#e0eff8"
+    },
+    {
+      "id": "delivery",
+      "name": "派送广场",
+      "subtitle": "整理数字作品，负责任地分享",
+      "icon": "package",
+      "color": "#6b8850",
+      "pale": "#e7eedb"
+    }
+  ],
+  "tasks": {
+    "click": {
+      "title": "整理数字学习资料",
+      "skill": "单击",
+      "xp": 50,
+      "instruction": "按本次整理清单，单击三个带绿色标签的资料包。先看清标签再选择。",
+      "hint": "单击：轻按一下鼠标左键，再松开。不要连点，也不要选到橙色包裹。",
+      "objective": "选中 3 个绿色标签的资料包",
+      "kind": "click",
+      "params": {
+        "parcels": [
+          "green",
+          "orange",
+          "green",
+          "orange",
+          "orange",
+          "green"
+        ],
+        "labels": [
+          "学习笔记",
+          "临时草稿",
+          "课程插图",
+          "重复文件",
+          "过期通知",
+          "设备清单"
+        ]
+      },
+      "context": "整理这次信息科技课的学习资料，让需要用到的人能快速找到正确版本。"
+    },
+    "double": {
+      "title": "打开人工智能体验包",
+      "skill": "双击",
+      "xp": 50,
+      "instruction": "快速双击「人工智能体验包」，读一读打开后的资料说明。",
+      "hint": "双击：在同一个位置，连续快速按两次鼠标左键。",
+      "objective": "双击打开人工智能体验包",
+      "kind": "double",
+      "params": {
+        "file": "人工智能体验包",
+        "opened": "人工智能能辅助学习，它的回答也需要核实。"
+      },
+      "context": "AI给出了一个很流畅的答案。先保留问题和核查证据，再决定哪些内容可以用于作品。"
+    },
+    "right": {
+      "title": "标记待核实的信息",
+      "skill": "右键",
+      "xp": 60,
+      "instruction": "在「待核实消息」上按右键，在菜单中选择「标记为待核实」。",
+      "hint": "右键通常打开更多操作的菜单。菜单出现后，用左键选择需要的操作。",
+      "objective": "右键 → 标记为待核实",
+      "kind": "right",
+      "params": {
+        "item": "待核实消息",
+        "label": "标记为待核实",
+        "result": "待核实 · 暂不转发"
+      },
+      "context": "整理这次信息科技课的学习资料，让需要用到的人能快速找到正确版本。"
+    },
+    "wheel": {
+      "title": "寻找计算机设备清单",
+      "skill": "滚轮",
+      "xp": 60,
+      "instruction": "把鼠标放在资料清单内向下滚动，找到第 12 项「温度传感器」，再单击。",
+      "hint": "滚轮滚动的是鼠标下方的区域。先把鼠标移到清单里，再滚动。",
+      "objective": "滚动清单 → 找到温度传感器",
+      "kind": "wheel",
+      "params": {
+        "cargo": [
+          "键盘",
+          "鼠标",
+          "显示器",
+          "耳机",
+          "摄像头",
+          "打印机",
+          "扫描仪",
+          "扬声器",
+          "触控板",
+          "麦克风",
+          "U盘",
+          "温度传感器"
+        ],
+        "target": 11
+      },
+      "context": "整理这次信息科技课的学习资料，让需要用到的人能快速找到正确版本。"
+    },
+    "middle": {
+      "title": "启动机器人状态灯",
+      "skill": "中键",
+      "xp": 70,
+      "instruction": "将鼠标移到「机器人状态灯」上，按下并松开滚轮中键。",
+      "hint": "滚轮也可以像按钮一样按下。笔记本触控板通常没有中键，请连接鼠标完成这项练习。",
+      "objective": "用中键点亮机器人状态灯",
+      "kind": "middle",
+      "params": {
+        "beacon": "机器人状态灯"
+      },
+      "context": "机器人在路口没有按预期转弯。保留原程序和日志，再一次改一处并重新测试。"
+    },
+    "select": {
+      "title": "选出人工智能学习提醒",
+      "skill": "选中文本",
+      "xp": 80,
+      "instruction": "拖动鼠标，只选中便签里的「AI回答可能出错」。",
+      "hint": "从目标句子的第一个字前按住左键，拖到最后一个字后松开。",
+      "objective": "准确选中「AI回答可能出错」",
+      "kind": "select",
+      "params": {
+        "text": "AI回答可能出错"
+      },
+      "context": "AI给出了一个很流畅的答案。先保留问题和核查证据，再决定哪些内容可以用于作品。"
+    },
+    "drag": {
+      "title": "收集校园智能创意",
+      "skill": "拖放",
+      "xp": 70,
+      "instruction": "按住「让传感器提醒节水」便签，拖到「创意计划箱」后松开。",
+      "hint": "拖放：按住左键 → 移动鼠标 → 在目标上松开。",
+      "objective": "拖入创意计划箱",
+      "kind": "drag",
+      "params": {
+        "note": "让传感器提醒节水",
+        "box": "创意计划箱"
+      },
+      "context": "整理这次信息科技课的学习资料，让需要用到的人能快速找到正确版本。"
+    },
+    "typing": {
+      "title": "输入人工智能英文问候",
+      "skill": "英文与标点",
+      "xp": 80,
+      "instruction": "准确输入 Hello, AI!，注意大小写、空格和英文标点。",
+      "hint": "英文输入状态下，用 Shift + 字母输入大写。用 Shift + 1 输入感叹号。",
+      "objective": "输入 Hello, AI!",
+      "kind": "typing",
+      "params": {
+        "expected": "Hello, AI!"
+      },
+      "context": "AI给出了一个很流畅的答案。先保留问题和核查证据，再决定哪些内容可以用于作品。"
+    },
+    "repair": {
+      "title": "修复机器人的输入指令",
+      "skill": "Backspace / Enter",
+      "xp": 80,
+      "instruction": "对照目标文字 Hello, AI!，用 Backspace 删除多余的字母，再按 Enter 提交。",
+      "hint": "Backspace 删除光标前的字符。可以用方向键移动光标，也可以用鼠标定位。",
+      "objective": "改成 Hello, AI! → Enter",
+      "kind": "repair",
+      "params": {
+        "expected": "Hello, AI!",
+        "initial": "Hello, AII!"
+      },
+      "context": "机器人在路口没有按预期转弯。保留原程序和日志，再一次改一处并重新测试。"
+    },
+    "chinese": {
+      "title": "写下信息核查约定",
+      "skill": "中文输入",
+      "xp": 80,
+      "instruction": "切换到中文输入法，输入「先核实再使用信息。」，注意中文句号。",
+      "hint": "Windows 常用 Win + 空格切换输入法。中文句号是「。」，英文句号是「.」。",
+      "objective": "输入 先核实再使用信息。",
+      "kind": "chinese",
+      "params": {
+        "expected": "先核实再使用信息。"
+      },
+      "context": "整理这次信息科技课的学习资料，让需要用到的人能快速找到正确版本。"
+    },
+    "tab": {
+      "title": "登记数字学习小组",
+      "skill": "Tab / Shift + Tab",
+      "xp": 90,
+      "instruction": "输入小组代号 IT，按 Tab 到设备数量框输入 3，再按 Shift+Tab 返回，按 Enter 提交。",
+      "hint": "Tab 到下一个输入框，Shift+Tab 返回；本练习使用虚构小组代号，无需填写真实姓名。",
+      "objective": "IT → Tab → 3 → Shift+Tab → Enter",
+      "kind": "tab",
+      "params": {
+        "name": "IT",
+        "count": "3",
+        "nameLabel": "小组代号",
+        "countLabel": "设备数量"
+      },
+      "context": "下一组同学要接着编辑项目。用清楚的分工和版本记录减少重复劳动，也认可每位伙伴的贡献。"
+    },
+    "copy": {
+      "title": "备份信息查证清单",
+      "skill": "Ctrl + A / C / V",
+      "xp": 100,
+      "instruction": "在左侧资料框中用 Ctrl+A 全选，Ctrl+C 复制，再到右侧用 Ctrl+V 粘贴。读一读资料中的提醒。",
+      "hint": "复制会保留原内容。Mac 可以使用 ⌘ 代替 Ctrl。这是真实的复制与粘贴操作。",
+      "objective": "全选 → 复制 → 粘贴资料",
+      "kind": "copy",
+      "params": {
+        "recipe": "查来源看日期；多方核对重要结论。"
+      },
+      "context": "整理这次信息科技课的学习资料，让需要用到的人能快速找到正确版本。"
+    },
+    "cut": {
+      "title": "移动算法步骤记录",
+      "skill": "Ctrl + X / V",
+      "xp": 100,
+      "instruction": "在左侧资料框中用 Ctrl+A 全选，Ctrl+X 剪切，再到右侧用 Ctrl+V 粘贴。读一读资料中的提醒。",
+      "hint": "剪切会移走原内容。完成时，左边应为空，右边应有完整的资料。",
+      "objective": "全选 → 剪切 → 粘贴资料",
+      "kind": "cut",
+      "params": {
+        "recipe": "输入后处理；处理后输出。"
+      },
+      "context": "机器人在路口没有按预期转弯。保留原程序和日志，再一次改一处并重新测试。"
+    },
+    "undo": {
+      "title": "恢复误改的数据标签",
+      "skill": "Ctrl + Z",
+      "xp": 100,
+      "instruction": "在便签末尾输入 ！，再用 Ctrl+Z 撤销，恢复原来的资料提醒。",
+      "hint": "Ctrl+Z 撤销上一次编辑。请在输入框里实际输入，再使用快捷键撤销。",
+      "objective": "输入 ！ → Ctrl+Z 撤销",
+      "kind": "undo",
+      "params": {
+        "original": "原始数据先保留",
+        "mark": "！"
+      },
+      "context": "整理这次信息科技课的学习资料，让需要用到的人能快速找到正确版本。"
+    },
+    "save": {
+      "title": "保存传感器实验记录",
+      "skill": "Ctrl + S",
+      "xp": 100,
+      "instruction": "在记录框中输入「记录测量条件，保留测试结果。」，再按 Ctrl+S 保存。",
+      "hint": "应用里的 Ctrl+S 表示保存。本练习会保存到此浏览器，并可下载为文本文件。",
+      "objective": "填写学习记录 → Ctrl+S 保存",
+      "kind": "save",
+      "params": {
+        "expected": "记录测量条件，保留测试结果。",
+        "record": "experiment"
+      },
+      "context": "实验组要把读数与测试条件一并保存，让下一组能够重复实验。"
+    },
+    "crop": {
+      "title": "制作信息科技学习卡",
+      "skill": "区域截图",
+      "xp": 100,
+      "instruction": "拖出矩形，完整框住「信息科技学习卡」图卡，尽量贴近四边。截图聚焦关键区域。",
+      "hint": "从明信片的左上角附近拖到右下角，或反方向拖动。完成后可以下载实际 PNG 图片。",
+      "objective": "完整框住学习图卡",
+      "kind": "crop",
+      "params": {
+        "crop": {
+          "x": 160,
+          "y": 75,
+          "w": 540,
+          "h": 350
+        },
+        "caption": "信息科技学习卡"
+      },
+      "context": "整理这次信息科技课的学习资料，让需要用到的人能快速找到正确版本。"
+    },
+    "capture": {
+      "title": "截取不含隐私的操作图",
+      "skill": "系统截图与粘贴",
+      "xp": 120,
+      "instruction": "用系统截图工具截取游戏中的操作画面，避开姓名、账号与聊天内容，再粘贴或导入接收台。截图前检查画面。",
+      "hint": "Windows：Win + Shift + S。Mac：⌘ + Control + Shift + 4 复制截图。统信 UOS：Ctrl + Alt + A 打开截图工具，框选后复制或保存；也可从启动器打开“截图”或“截图录屏”。网页不能检测系统截图快捷键，会在收到图片后记录完成。",
+      "objective": "粘贴或导入一张截图",
+      "kind": "capture",
+      "params": {
+        "subject": "截取不含隐私的操作图"
+      },
+      "context": "整理这次信息科技课的学习资料，让需要用到的人能快速找到正确版本。"
+    },
+    "delivery": {
+      "title": "发布核实后的学习消息",
+      "skill": "综合挑战",
+      "xp": 150,
+      "instruction": "双击「发布核实后的学习消息.txt」，用 Ctrl+A 全选旧内容，改成「发布前核实内容，消息附上可靠来源。」，最后 Ctrl+S 保存。",
+      "hint": "双击打开文件 → Ctrl+A 全选旧内容 → 输入新内容 → Ctrl+S 保存。",
+      "objective": "打开资料 → 更新内容 → 保存派送",
+      "kind": "delivery",
+      "params": {
+        "expected": "发布前核实内容，消息附上可靠来源。",
+        "file": "发布核实后的学习消息.txt",
+        "record": "message"
+      },
+      "context": "整理这次信息科技课的学习资料，让需要用到的人能快速找到正确版本。"
+    },
+    "document": {
+      "title": "排版信息科技学习记录",
+      "skill": "Word 排版",
+      "xp": 120,
+      "instruction": "在「信息科技学习记录」文档中，选中标题并设置标题加粗、标题居中、正文项目符号，补全正文，最后 Ctrl+S 保存。",
+      "hint": "先点击标题框并按 Ctrl+A 全选，再设置格式；按要求填写正文并保留换行。",
+      "objective": "选中标题并排版 → 补全文档 → Ctrl+S",
+      "kind": "document",
+      "params": {
+        "title": "信息科技学习记录",
+        "body": "先提出问题，再选择工具。\n记录操作过程，核查重要信息。"
+      }
+    },
+    "hover": {
+      "title": "读懂数字工具提示",
+      "skill": "悬停查看",
+      "xp": 80,
+      "instruction": "将鼠标停在「工具提示」上，阅读提示，再选择对应说明。",
+      "hint": "在图标上停留片刻，阅读提示后再选择。",
+      "objective": "停留查看提示 → 确认对应说明",
+      "kind": "hover",
+      "params": {
+        "target": "工具提示",
+        "tip": "了解工具用途，再选择合适操作。"
+      }
+    },
+    "files": {
+      "title": "整理信息核查资料",
+      "skill": "文件夹 / Ctrl 多选",
+      "xp": 110,
+      "instruction": "新建「查证资料」，把查证清单与素材来源表移动进去，其他文件留在原处，检查整理结果。",
+      "hint": "新建后输入名称并按 Enter；也可右键重命名。Ctrl+单击多选文件，Ctrl+X 剪切，双击打开目录后 Ctrl+V 粘贴。",
+      "objective": "新建目录 → 多选文件 → 剪切粘贴归档",
+      "kind": "files",
+      "params": {
+        "files": [
+          "查证清单.txt",
+          "临时草稿.tmp",
+          "素材来源表.xlsx",
+          "旧版通知.txt"
+        ],
+        "targets": [
+          0,
+          2
+        ],
+        "folder": "查证资料",
+        "operation": "move"
+      }
+    },
+    "sheet": {
+      "title": "统计补给数量",
+      "skill": "表格 / Tab / 求和",
+      "xp": 110,
+      "instruction": "在三行数量中填入指定数字，使用 Tab 移动到下一个格子；在 B5 输入 =SUM(B2:B4)，按 Enter 求和。",
+      "hint": "B 是数量列；B2 到 B4 是三项物资。公式以英文等号开头。",
+      "objective": "填入数量 → Tab 切换 → 输入公式 → Enter",
+      "kind": "sheet",
+      "params": {}
+    },
+    "search": {
+      "title": "修订集合地点",
+      "skill": "Ctrl+H / 查找替换",
+      "xp": 110,
+      "instruction": "点击文档后按 Ctrl+H，填写查找词和替换词，点击全部替换，最后 Ctrl+S 保存。",
+      "hint": "Ctrl+H 打开替换面板；全部替换会一次改掉所有相同的词。",
+      "objective": "打开替换 → 全部替换 → 保存",
+      "kind": "search",
+      "params": {}
+    },
+    "settings": {
+      "title": "布置自己的工作台",
+      "skill": "单选 / 下拉 / 复选",
+      "xp": 110,
+      "instruction": "选择要求的主题和文字大小，勾选自动保存，最后应用设置。",
+      "hint": "圆形控件是单选；方形开关是复选；下拉框可以展开选项。",
+      "objective": "选择主题 → 字号 → 自动保存 → 应用",
+      "kind": "settings",
+      "params": {}
+    },
+    "mail": {
+      "title": "写一封探索邮件",
+      "skill": "表单 / 附件",
+      "xp": 110,
+      "instruction": "按要求填写收件人、主题和正文，勾选探索记录附件，再发送练习邮件。",
+      "hint": "依次检查三项文字，别忘记附件。这是小镇内的练习信箱。",
+      "objective": "收件人 → 主题 → 正文 → 附件 → 发送",
+      "kind": "mail",
+      "params": {}
+    },
+    "keys": {
+      "title": "用键盘补全便签",
+      "skill": "Home / End",
+      "xp": 110,
+      "instruction": "先按 Home 到开头，输入通知前缀；再按 End 到结尾，补上标点并提交。",
+      "hint": "Home 到行首；End 到行末。请用键盘定位后输入，保持中间的文字完整。",
+      "objective": "Home 补开头 → End 补结尾 → 提交",
+      "kind": "keys",
+      "params": {}
+    },
+    "presentation": {
+      "title": "制作探索幻灯片",
+      "skill": "版式 / 拖放 / 放映",
+      "xp": 110,
+      "instruction": "选择标题与图片版式，填写指定标题，把风景图片拖进幻灯片，再预览放映。",
+      "hint": "先设置版式，再输入标题；按住左键将左侧图片拖入右侧图片框。",
+      "objective": "设置版式 → 写标题 → 拖入图片 → 放映",
+      "kind": "presentation",
+      "params": {}
+    },
+    "resize": {
+      "title": "整理桌面窗口",
+      "skill": "移动窗口 / 调整大小",
+      "xp": 110,
+      "instruction": "拖动窗口标题栏向右移动，再按住右下角，将窗口拉得更宽、更高。",
+      "hint": "移动窗口请拖顶部标题栏；调整尺寸请拖右下角三角形。两次拖动后松开。",
+      "objective": "拖标题栏向右 → 拖右下角放大",
+      "kind": "resize",
+      "params": {}
+    }
+  }
+}

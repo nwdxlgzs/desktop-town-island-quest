@@ -1,0 +1,17 @@
+.onboarding-layer { position:fixed;inset:0;z-index:50;pointer-events:none; }
+.onboarding-shade { position:absolute;background:#203b32a6;pointer-events:auto; }
+.onboarding-ring { position:absolute;border:2px solid #f1d483;border-radius:12px;box-shadow:0 0 0 4px #fff4c337; }
+.onboarding-card { position:absolute;width:min(354px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:22px;background:#fffef5;border:1px solid #dce5d1;border-radius:17px;box-shadow:0 12px 35px #18382c40;pointer-events:auto;color:#405d4d; }
+.onboarding-top,.onboarding-bottom { display:flex;align-items:center;gap:12px; }
+.onboarding-top { justify-content:space-between;margin-bottom:14px; }
+.onboarding-count { font-size:11px;color:#809171; }
+#onboarding-skip { padding:4px 0;font-size:11px;color:#86917e; }
+.onboarding-card h2 { font-size:20px;line-height:1.5; }
+.onboarding-card p { margin:12px 0 22px;font-size:13px;line-height:1.9;color:#71826b; }
+.onboarding-bottom { flex-wrap:wrap; }
+.onboarding-dots { display:flex;gap:5px;margin-right:auto; }
+.onboarding-dot { width:5px;height:5px;border-radius:50%;background:#d7e0cf; }
+.onboarding-dot.current { width:16px;border-radius:4px;background:#5d947b; }
+#onboarding-back { font-size:11px;color:#7d8e71;padding:8px 0; }
+#onboarding-next { padding:10px 13px;font-size:12px; }
+.onboarding-replay { margin-top:16px; }

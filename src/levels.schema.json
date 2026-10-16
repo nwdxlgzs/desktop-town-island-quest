@@ -1,0 +1,731 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "电脑小镇任务与随机航程",
+  "type": "object",
+  "required": [
+    "version",
+    "targetMinutes",
+    "challengesPerMinute",
+    "islandNames",
+    "islands",
+    "landscapes",
+    "missions",
+    "variants"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "const": 4
+    },
+    "targetMinutes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "challengesPerMinute": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "challengeUnit": {
+      "const": "workshop"
+    },
+    "islandNames": {
+      "type": "array",
+      "minItems": 1,
+      "description": "仅用于随机命名，不控制島屿数量",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "islands": {
+      "type": "object",
+      "required": [
+        "workshopCount",
+        "introductionCount",
+        "baseLayers",
+        "densities",
+        "npcLimit",
+        "npc"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "workshopCount": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "introductionCount": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 6
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "baseLayers": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "densities": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "scattered",
+              "mixed",
+              "clustered"
+            ]
+          }
+        },
+        "npcLimit": {
+          "type": "integer",
+          "minimum": 6,
+          "maximum": 12
+        },
+        "npc": {
+          "type": "object",
+          "required": [
+            "radius",
+            "speed"
+          ],
+          "properties": {
+            "radius": {
+              "type": "number",
+              "minimum": 0.5,
+              "maximum": 4
+            },
+            "speed": {
+              "type": "number",
+              "minimum": 0.3,
+              "maximum": 1.5
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "landscapes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "story",
+          "map"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "story": {
+            "type": "string"
+          },
+          "map": {
+            "type": "object",
+            "required": [
+              "width",
+              "depth",
+              "trees",
+              "features",
+              "shapes"
+            ],
+            "properties": {
+              "width": {
+                "$ref": "#/$defs/sizeRange"
+              },
+              "depth": {
+                "$ref": "#/$defs/sizeRange"
+              },
+              "trees": {
+                "$ref": "#/$defs/countRange"
+              },
+              "features": {
+                "type": "object",
+                "required": [
+                  "mountains",
+                  "lakes",
+                  "villages",
+                  "camps",
+                  "river"
+                ],
+                "properties": {
+                  "mountains": {
+                    "$ref": "#/$defs/countRange"
+                  },
+                  "lakes": {
+                    "$ref": "#/$defs/countRange"
+                  },
+                  "villages": {
+                    "$ref": "#/$defs/countRange"
+                  },
+                  "camps": {
+                    "$ref": "#/$defs/countRange"
+                  },
+                  "river": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "shapes": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "oval",
+                    "bean",
+                    "crescent",
+                    "coves",
+                    "freeform"
+                  ]
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "missions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "theme",
+          "name",
+          "tasks"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "theme": {
+            "enum": [
+              "mouse",
+              "text",
+              "keyboard",
+              "shortcuts",
+              "screenshot",
+              "delivery"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "tasks": {
+            "type": "array",
+            "minItems": 3,
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "introduction": {
+            "type": "boolean"
+          },
+          "literacy": {
+            "type": "object",
+            "required": ["dimension", "tip"],
+            "properties": {
+              "dimension": {
+                "enum": ["信息意识", "计算思维", "数字化学习与创新", "信息社会责任"]
+              },
+              "tip": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "variants": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "base"
+        ],
+        "properties": {
+          "base": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "hint": {
+            "type": "string"
+          },
+          "objective": {
+            "type": "string"
+          },
+          "xp": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "params": {
+            "type": "object",
+            "properties": {
+              "parcels": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "green",
+                    "orange"
+                  ]
+                },
+                "minItems": 6,
+                "maxItems": 6
+              },
+              "text": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              },
+              "expected": {
+                "type": "string"
+              },
+              "initial": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "count": {
+                "type": "string"
+              },
+              "recipe": {
+                "type": "string"
+              },
+              "original": {
+                "type": "string"
+              },
+              "record": {
+                "type": "string"
+              },
+              "file": {
+                "type": "string"
+              },
+              "caption": {
+                "type": "string"
+              },
+              "crop": {
+                "type": "object",
+                "required": [
+                  "x",
+                  "y",
+                  "w",
+                  "h"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "y": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "w": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "h": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "additionalProperties": false
+              },
+              "opened": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "result": {
+                "type": "string"
+              },
+              "box": {
+                "type": "string"
+              },
+              "beacon": {
+                "type": "string"
+              },
+              "subject": {
+                "type": "string"
+              },
+              "targetColor": {
+                "enum": [
+                  "green",
+                  "orange"
+                ]
+              },
+              "cargo": {
+                "type": "array",
+                "minItems": 5,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "target": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "theme": {
+                "type": "string"
+              },
+              "size": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "prefix": {
+                "type": "string"
+              },
+              "suffix": {
+                "type": "string"
+              },
+              "find": {
+                "type": "string"
+              },
+              "replace": {
+                "type": "string"
+              },
+              "folder": {
+                "type": "string"
+              },
+              "tip": {
+                "type": "string"
+              },
+              "mark": {
+                "type": "string"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "tools": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "values": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                },
+                "minItems": 1
+              },
+              "targets": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                },
+                "minItems": 1
+              }
+            },
+            "additionalProperties": true
+          },
+          "kind": {
+            "type": "string"
+          },
+          "skill": {
+            "type": "string"
+          },
+          "context": {
+            "type": "string"
+          },
+          "guide": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["label", "help"],
+              "properties": {
+                "label": {"type": "string"},
+                "help": {"type": "string"},
+                "target": {"type": "string"}
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "biomes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "story",
+          "flora",
+          "fauna",
+          "palette"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "story": {
+            "type": "string"
+          },
+          "flora": {
+            "enum": [
+              "broadleaf",
+              "cherry",
+              "pine",
+              "cactus",
+              "crystal",
+              "palm",
+              "basalt",
+              "cloud",
+              "jungle",
+              "antenna"
+            ]
+          },
+          "fauna": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "trees": {
+            "$ref": "#/$defs/countRange"
+          },
+          "features": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "mountains": {
+                "$ref": "#/$defs/countRange"
+              }
+            }
+          },
+          "palette": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ground",
+              "groundAlt",
+              "sand",
+              "rock",
+              "leaf",
+              "water",
+              "accent",
+              "trunk"
+            ],
+            "properties": {
+              "ground": {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              "groundAlt": {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              "sand": {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              "water": {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              "accent": {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              "trunk": {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              "rock": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$"
+                }
+              },
+              "leaf": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "environments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "weight",
+          "sun",
+          "sunColor",
+          "sunIntensity",
+          "ambient",
+          "fill",
+          "sky",
+          "sea",
+          "exposure",
+          "rain"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "sun": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number"
+            }
+          },
+          "sunColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "sky": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "sea": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "sunIntensity": {
+            "type": "number",
+            "minimum": 0
+          },
+          "ambient": {
+            "type": "number",
+            "minimum": 0
+          },
+          "fill": {
+            "type": "number",
+            "minimum": 0
+          },
+          "exposure": {
+            "type": "number",
+            "minimum": 0
+          },
+          "rain": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sizeRange": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "integer",
+          "minimum": 14,
+          "maximum": 120
+        },
+        {
+          "type": "integer",
+          "minimum": 14,
+          "maximum": 120
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "countRange": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 120
+      },
+      "minItems": 2,
+      "maxItems": 2
+    }
+  }
+}
