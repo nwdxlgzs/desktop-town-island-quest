@@ -9,7 +9,7 @@ export function openExerciseDemo(taskId,{capture=()=>'',autoplay=true,timing=1}=
   const events=new AbortController(),options={signal:events.signal},delays=new Set(),resumes=new Set();
   let disposed=false,paused=!autoplay,automatic=autoplay,index=0,version=0,busy=false,cleanup=null,scheduled=0,completed=false,clipboard='',sample=null,pointed=null;
   layer.className='exercise-demo-layer';layer.dataset.kind=task.kind;layer.setAttribute('role','dialog');layer.setAttribute('aria-modal','true');layer.setAttribute('aria-label','本题自动操作演示');
-  layer.innerHTML=`<section class="exercise-demo"><header class="demo-header"><div><small>看演示，再自己做</small><h2>${esc(task.title)}</h2></div><button class="demo-close" aria-label="关闭演示，返回原题">${icon('close',22)}返回自己做</button></header><div class="demo-instruction" role="status" aria-live="polite"><b></b><span></span></div><div class="demo-controls"><button class="demo-pause">暂停演示</button><button class="demo-replay">${icon('reset',16)}从头重播</button><label>速度<select class="demo-speed"><option value="0.7">慢速</option><option value="1" selected>正常</option><option value="2">快速</option></select></label><span class="demo-boundary">演示区自动操作，原题进度保留</span></div><div class="demo-viewport"><div class="exercise demo-exercise"></div></div><footer class="demo-feedback" aria-live="polite"></footer><div class="demo-cursor" aria-hidden="true"><svg viewBox="0 0 32 40"><path d="M2 2v30l8-8 7 13 6-3-7-12h12z" fill="#fff4ae" stroke="#693c12" stroke-width="2"/></svg><span></span></div></section>`;
+  layer.innerHTML=`<section class="exercise-demo"><header class="demo-header"><div><small>看演示，再自己做</small><h2>${esc(task.title)}</h2></div><button class="demo-close" aria-label="关闭演示，返回原题">${icon('close',22)}返回自己做</button></header><div class="demo-instruction" role="status" aria-live="polite"><b></b><span></span></div><div class="demo-controls"><button class="demo-pause">暂停演示</button><button class="demo-replay">${icon('reset',16)}从头重播</button><label>速度<select class="demo-speed"><option value="0.7">慢速</option><option value="1" selected>正常</option><option value="2">快速</option></select></label><span class="demo-boundary">演示区自动操作，原题进度保留</span><span class="demo-clipboard" hidden role="status"><b></b><span></span></span></div><div class="demo-viewport"><div class="demo-question"><p class="instruction">${esc(task.instruction)}</p><button class="text-button demo-hint-toggle" aria-expanded="false">${icon('help',17)}操作提示</button><div class="hint-box demo-question-hint" hidden><p>${esc(task.hint)}</p></div></div><div class="exercise demo-exercise"></div></div><footer class="demo-feedback" aria-live="polite"></footer><div class="demo-cursor" aria-hidden="true"><svg viewBox="0 0 32 40"><path d="M2 2v30l8-8 7 13 6-3-7-12h12z" fill="#fff4ae" stroke="#693c12" stroke-width="2"/></svg><span></span></div></section>`;
   document.body.append(layer);
   const root=layer.querySelector('.demo-exercise'),viewport=layer.querySelector('.demo-viewport'),cursor=layer.querySelector('.demo-cursor'),message=layer.querySelector('.demo-feedback'),pauseButton=layer.querySelector('.demo-pause');
   const speed=()=>Number(layer.querySelector('.demo-speed').value);
@@ -28,7 +28,7 @@ export function openExerciseDemo(taskId,{capture=()=>'',autoplay=true,timing=1}=
   async function settle(ms,v){if(ms)await new Promise(resolve=>{const entry={resolve,id:0};entry.id=setTimeout(()=>{delays.delete(entry);resolve();},ms);delays.add(entry);});check(v);}
   function cancelWaits(){clearTimeout(scheduled);scheduled=0;for(const entry of delays){clearTimeout(entry.id);entry.resolve();}delays.clear();for(const resolve of resumes)resolve();resumes.clear();}
   function resolve(action){
-    let el=root.querySelector(action.target);
+    let el=viewport.querySelector(action.target);
     if(action.type==='tab')el=[...el.querySelectorAll('[data-browser-tab]')].find(button=>button.textContent===action.title);
     if(action.type==='filter'||action.type==='attachment')el=[...el.querySelectorAll('label')].find(label=>label.textContent.trim()===action.value)?.querySelector('input');
     if(!el)throw new Error('未找到演示控件：'+action.target);
@@ -41,12 +41,17 @@ export function openExerciseDemo(taskId,{capture=()=>'',autoplay=true,timing=1}=
   function keyboard(el,key,extra={}){
     el.focus({preventScroll:true});el.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true,cancelable:true,...extra}));
     if(extra.ctrlKey&&key==='a'&&el.select){el.select();el.dispatchEvent(new Event('select',{bubbles:true}));}
-    if(extra.ctrlKey&&['c','x'].includes(key)&&typeof el.value==='string'){clipboard=el.value.slice(el.selectionStart,el.selectionEnd);if(key==='x'&&!el.readOnly)setValue(el,el.value.slice(0,el.selectionStart)+el.value.slice(el.selectionEnd));}
+    if(extra.ctrlKey&&['c','x'].includes(key)){
+      const selection=window.getSelection();
+      clipboard=typeof el.value==='string'?el.value.slice(el.selectionStart,el.selectionEnd):el.contains(selection?.anchorNode)&&el.contains(selection?.focusNode)?selection.toString():'';
+      const data=new DataTransfer();data.setData('text/plain',clipboard);el.dispatchEvent(new ClipboardEvent(key==='x'?'cut':'copy',{bubbles:true,cancelable:true,clipboardData:data}));
+      if(key==='x'&&typeof el.value==='string'&&!el.readOnly)setValue(el,el.value.slice(0,el.selectionStart)+el.value.slice(el.selectionEnd));
+    }
     if((key==='Home'||key==='End')&&el.setSelectionRange){const at=key==='Home'?0:el.value.length;el.setSelectionRange(at,at);}
     el.dispatchEvent(new KeyboardEvent('keyup',{key,bubbles:true,...extra}));
   }
   async function point(el,label,v,at=null){
-    root.querySelectorAll('.demo-target').forEach(node=>node.classList.remove('demo-target'));el.classList.add('demo-target');
+    viewport.querySelectorAll('.demo-target').forEach(node=>node.classList.remove('demo-target'));el.classList.add('demo-target');
     el.scrollIntoView({block:'nearest',inline:'nearest'});
     pointed=el;cursor.querySelector('span').textContent=label;cursor.hidden=false;positionCursor();
     await wait(650,v);
@@ -57,6 +62,37 @@ export function openExerciseDemo(taskId,{capture=()=>'',autoplay=true,timing=1}=
     setValue(el,'');const chars=[...value],chunk=Math.max(1,Math.ceil(chars.length/55));
     for(let i=chunk;i<chars.length+chunk;i+=chunk){await wait(30,v);setValue(el,chars.slice(0,i).join(''));}
     el.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+  function clipboardStatus(label){
+    const badge=layer.querySelector('.demo-clipboard');badge.hidden=false;badge.querySelector('b').textContent=label;badge.querySelector('span').textContent=clipboard;
+    pointed?.scrollIntoView({block:'nearest',inline:'nearest'});positionCursor();
+  }
+  async function selectText(el,value,v){
+    if(typeof el.value==='string'){
+      const start=el.value.indexOf(value);if(start<0)throw new Error('草稿中未找到待选文字');
+      el.focus({preventScroll:true});el.setSelectionRange(start,start+value.length);el.dispatchEvent(new Event('select',{bubbles:true}));await wait(550,v);return;
+    }
+    const start=el.textContent.indexOf(value);if(start<0||!value)throw new Error('资料中未找到要复制的文字');
+    // Select text from the visible question/material, including wrapped lines and nested spans.
+    const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT),nodes=[];let node,offset=0;
+    while((node=walker.nextNode())){nodes.push({node,start:offset,end:offset+node.length});offset+=node.length;}
+    const boundary=at=>{const entry=nodes.find(item=>at>=item.start&&at<=item.end);return [entry.node,at-entry.start];};
+    const range=document.createRange(),selection=window.getSelection();el.tabIndex=-1;el.focus({preventScroll:true});
+    range.setStart(...boundary(start));range.collapse(true);selection.removeAllRanges();selection.addRange(range);
+    const first=document.createRange();first.setStart(...boundary(start));first.setEnd(...boundary(start+1));const origin=first.getBoundingClientRect();cursor.style.left=origin.left+'px';cursor.style.top=origin.top+origin.height/2+'px';
+    for(let i=1;i<=16;i++){
+      await wait(55,v);const end=start+Math.max(1,Math.ceil(value.length*i/16));range.setEnd(...boundary(end));selection.removeAllRanges();selection.addRange(range);
+      const rect=[...range.getClientRects()].at(-1);if(rect){cursor.style.left=rect.right+'px';cursor.style.top=rect.top+rect.height/2+'px';}
+    }
+    document.dispatchEvent(new Event('selectionchange'));await wait(450,v);
+  }
+  function paste(el){
+    keyboard(el,'v',{ctrlKey:true});
+    const data=new DataTransfer();data.setData('text/plain',clipboard);
+    if(el.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:data}))){
+      el.setRangeText(clipboard,el.selectionStart,el.selectionEnd,'end');el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertFromPaste',data:clipboard}));
+    }
+    clipboardStatus('Ctrl+V · 已粘贴');
   }
   async function pointerDrag(el,start,end,v){
     // Synthetic demonstrations need no OS pointer capture; only this isolated
@@ -77,7 +113,9 @@ export function openExerciseDemo(taskId,{capture=()=>'',autoplay=true,timing=1}=
     else if(type==='choose'){el.value=action.value;el.dispatchEvent(new Event('change',{bubbles:true}));}
     else if(['check','filter','attachment'].includes(type)){if(el.checked!==(action.checked??true))el.click();}
     else if(type==='key'){keyboard(el,action.key,action);if(action.to)root.querySelector(action.to)?.focus({preventScroll:true});}
-    else if(type==='paste'){keyboard(el,'v',{ctrlKey:true});setValue(el,clipboard||action.value);}
+    else if(type==='selectText')await selectText(el,action.value,v);
+    else if(type==='copyText'){keyboard(el,'c',{ctrlKey:true});if(!clipboard)throw new Error('请先选中资料文字再复制');clipboardStatus('Ctrl+C · 已复制');await wait(600,v);}
+    else if(type==='paste')paste(el);
     else if(type==='undo'){keyboard(el,'z',{ctrlKey:true});setValue(el,action.value);}
     else if(type==='insert'){const at=el.selectionStart;setValue(el,el.value.slice(0,at)+action.value+el.value.slice(el.selectionEnd));el.setSelectionRange(at+action.value.length,at+action.value.length);}
     else if(type==='repair'){
@@ -119,7 +157,7 @@ export function openExerciseDemo(taskId,{capture=()=>'',autoplay=true,timing=1}=
     if(busy||disposed||index>=actions.length)return;const v=version;busy=true;
     try{
       await gate(v);const action=actions[index];layer.dataset.step=String(index);layer.querySelector('.demo-instruction b').textContent=`第 ${index+1} / ${actions.length} 步`;layer.querySelector('.demo-instruction span').textContent=action.label;
-      const el=resolve(action);await point(el,action.type==='key'?(action.ctrlKey?'Ctrl + ':'')+(action.shiftKey?'Shift + ':'')+action.key:action.type==='context'?'右键':action.type==='double'?'双击':action.type==='paste'?'Ctrl + V':action.type==='undo'?'Ctrl + Z':'看这里',v);
+      const el=resolve(action);await point(el,action.type==='key'?(action.ctrlKey?'Ctrl + ':'')+(action.shiftKey?'Shift + ':'')+action.key:action.type==='context'?'右键':action.type==='double'?'双击':action.type==='selectText'?'按住左键拖选':action.type==='copyText'?'Ctrl + C':action.type==='paste'?'Ctrl + V':action.type==='undo'?'Ctrl + Z':'看这里',v);
       cursor.classList.add('demo-press');await perform(action,el,v);cursor.classList.remove('demo-press');check(v);index++;status();
     }catch(error){if(error.name!=='AbortError'){layer.dataset.error=error.message;message.textContent='演示遇到问题，请从头重播。';paused=true;pauseButton.textContent='继续演示';}throw error;}
     finally{if(v===version){busy=false;schedule();}}
@@ -128,6 +166,7 @@ export function openExerciseDemo(taskId,{capture=()=>'',autoplay=true,timing=1}=
     version++;cancelWaits();cleanup?.();busy=false;index=0;completed=false;clipboard='';sample=null;delete layer.dataset.complete;delete layer.dataset.error;pauseButton.disabled=false;message.textContent='';
     if(paused)layer.dataset.paused='true';else delete layer.dataset.paused;
     cleanup=mountExercise(taskId,root,{teaching:false,capture,sound(){},feedback(text){message.textContent=text;},success(){completed=true;return true;}});
+    layer.querySelector('.demo-clipboard').hidden=true;layer.querySelector('.demo-question-hint').hidden=true;layer.querySelector('.demo-hint-toggle').setAttribute('aria-expanded','false');
     pauseButton.textContent=paused?'继续演示':'暂停演示';schedule();
   }
   function pause(){paused=true;clearTimeout(scheduled);pauseButton.textContent='继续演示';layer.dataset.paused='true';}
@@ -135,7 +174,8 @@ export function openExerciseDemo(taskId,{capture=()=>'',autoplay=true,timing=1}=
   function dispose(){if(disposed)return;disposed=true;version++;cancelWaits();cleanup?.();events.abort();layer.remove();if(previous?.isConnected)previous.focus({preventScroll:true});const selection=window.getSelection();for(const range of previousRanges)if(range.startContainer.isConnected&&range.endContainer.isConnected)selection?.addRange(range);}
   layer.querySelector('.demo-close').addEventListener('click',dispose,options);pauseButton.addEventListener('click',()=>paused?play():pause(),options);
   layer.querySelector('.demo-replay').addEventListener('click',()=>{paused=false;automatic=true;reset();},options);
-  window.addEventListener('resize',positionCursor,options);viewport.addEventListener('scroll',positionCursor,{...options,capture:true});
+  layer.querySelector('.demo-hint-toggle').addEventListener('click',()=>{const hint=layer.querySelector('.demo-question-hint');hint.hidden=!hint.hidden;layer.querySelector('.demo-hint-toggle').setAttribute('aria-expanded',String(!hint.hidden));},options);
+  window.addEventListener('resize',()=>{if(pointed?.isConnected)pointed.scrollIntoView({block:'nearest',inline:'nearest'});positionCursor();},options);viewport.addEventListener('scroll',positionCursor,{...options,capture:true});
   // Learners watch this separate exercise; real input cannot alter its script.
   viewport.addEventListener('pointerdown',e=>{if(e.isTrusted){e.preventDefault();e.stopImmediatePropagation();}},{...options,capture:true});
   document.addEventListener('keydown',e=>{

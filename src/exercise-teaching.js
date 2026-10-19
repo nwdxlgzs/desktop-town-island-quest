@@ -17,7 +17,7 @@ export function taskTeaching(task){
     const names=p.files||['查证清单.txt','临时草稿.tmp','素材来源表.xlsx','旧版通知.txt'],targets=(p.targets||[0,2]).map(i=>names[i]),copy=p.operation==='copy',folder=p.folder||'查证资料';
     steps=[
       {label:'先回到资料区',help:'点击左侧“信息科技资料”。先读清上方清单，只处理本题指定的文件。'},
-      {label:`新建「${folder}」`,help:`点击“新建文件夹”，输入「${folder}」后按 Enter。输错可选中文件夹，按 F2 或右键选择“重命名”。`},
+      {label:`新建「${folder}」`,help:`先在上方清单中拖选「${folder}」并按 Ctrl+C，再点击“新建文件夹”，按 Ctrl+V 替换默认名称，按 Enter 确认。输错可选中文件夹，按 F2 或右键选择“重命名”。`},
       {label:'一次选中清单文件',help:`先单击「${targets[0]}」，按住 Ctrl 再逐个单击「${targets.slice(1).join('、')}」。看到这些行同时高亮后松开 Ctrl；多选是本题的操作要求。`},
       {label:copy?'复制，保留原件':'剪切，准备移动',help:copy?'按 Ctrl+C，或点工具栏“复制”。本题是备份，不能用剪切或直接拖走原件。':'按 Ctrl+X，或点工具栏“剪切”。原件会标为等待移动；此时还没有离开资料区。'},
       {label:'进入目标文件夹并粘贴',help:`双击「${folder}」，再按 Ctrl+V 或点“粘贴”。双击文件夹只会打开它，不会自动搬运资料。`},
@@ -32,10 +32,10 @@ export function taskTeaching(task){
   ];
   if(kind==='document'){
     steps[0].help+=` 本题标题为「${p.title||'小镇公告'}」；每个需要的格式按钮点一次即可，再点会取消。`;
-    steps[1].help=`点击正文框，对照资料单补齐内容，保持换行和标点。本题完整正文：\n${p.body||'沿小路前往集合点。\n请带上饮用水，爱护自然。'}`;
+    steps[1].help=(p.initialBody?.includes('____')?'从下方资料单中拖选缺少的正文，按 Ctrl+C；再选中正文草稿里的 ____，按 Ctrl+V 替换，保留已经写好的第一行和换行。':'从下方资料单中拖选完整正文，按 Ctrl+C；点击正文框，再按 Ctrl+V 粘贴，核对换行与标点。')+`本题完整正文：\n${p.body||'沿小路前往集合点。\n请带上饮用水，爱护自然。'}`;
   }
   if(kind==='sheet')steps[0].help=`依次点击 B2、B3、B4，按顺序填入 ${(p.values||[3,4,2]).join('、')}。已有数字可以保留，错误数字可选中后修改。`;
-  if(kind==='mail')steps[1].help=`点击正文框，补齐任务要求的正文，保留换行与标点：\n${p.body||'学习资料已整理好，分享前请检查来源。'}\n已有草稿可以继续修改。`;
+  if(kind==='mail')steps[1].help=`可从下方任务单复制收件地址和主题。正文已有第一句时，只选中任务单中缺少的后半段并按 Ctrl+C，点击草稿末尾按 End，再按 Ctrl+V 补全，核对换行与标点：\n${p.body||'学习资料已整理好，分享前请检查来源。'}`;
   if(kind.startsWith('browser')){
     const pages=p.pages||[],titles=(p.targetIds||['source']).map(id=>pages.find(page=>page.id===id)?.title).filter(Boolean);
     if(titles.length)steps[0].help+=` 本题需查阅：${titles.join('、')}。`;
@@ -52,6 +52,7 @@ export function taskTeaching(task){
   if(kind==='undo')notes.push('只输入题目指定的一个标点，再用 Ctrl+Z 撤销。自己删除标点不能代替撤销操作。');
   if(kind==='capture')notes.push('Windows：Win+Shift+S；Mac：⌘+Control+Shift+4；统信 UOS：Ctrl+Alt+A。截图后回到接收区粘贴，也可选择已保存的截图文件。');
   if(kind==='calendar')notes.push('点错日程可以打开后修改或删除。遇到冲突时保留原有活动，重新选择题目要求的空闲时段。');
+  if(['files','document','sheet','search','mail','presentation','save','delivery'].includes(kind)||kind.startsWith('browser'))notes.push('不用把现成资料重新打一遍：在题干、操作提示或资料单中按住左键拖选需要的文字 → Ctrl+C → 点击输入位置 → Ctrl+V。只选文字本身，不带上外面的引号；粘贴后检查空格、标点和换行。');
   return {name:exerciseKindNames[kind],title:task.title,objective:task.objective,steps,notes};
 }
 

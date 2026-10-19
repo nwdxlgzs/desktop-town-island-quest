@@ -61,6 +61,8 @@ export function mountFileExercise(root,p,{on,finish,tell,shortcut,step}){
   on(menu,'click',e=>{const b=e.target.closest('[data-context]');if(b&&!b.disabled)action(b.dataset.context);});
   on(document,'pointerdown',e=>{if(!menu.contains(e.target))closeMenu();});
   on(root,'keydown',e=>{if(e.isComposing)return;if(editing){if(e.key==='Enter'){e.preventDefault();e.stopPropagation();commit();}if(e.key==='Escape'){e.preventDefault();e.stopPropagation();const id=editing;editing=null;render(id);}return;}
+    const textSelection=window.getSelection();
+    if(shortcut(e,'c')&&textSelection?.toString()&&!items.contains(textSelection.anchorNode)&&!items.contains(textSelection.focusNode))return;
     if(e.target.matches('input,textarea'))return;if(e.key==='Escape'&&!menu.hidden){e.preventDefault();e.stopPropagation();closeMenu();items.focus();return;}
     if(e.key==='Delete'){e.preventDefault();action('delete');return;}
     const commands=[['x','cut'],['c','copy'],['v','paste']];for(const [key,cmd]of commands)if(shortcut(e,key)){e.preventDefault();action(cmd);return;}

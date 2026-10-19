@@ -8,6 +8,14 @@ export function demoActions(task){
   const choose=(target,value,label)=>add('choose',target,label,{value:String(value)});
   const check=(target,checked,label)=>add('check',target,label,{checked});
   const ctrl=(target,keyName,label)=>key(target,keyName,label,{ctrlKey:true});
+  const reuse=(source,value,target,name,{replace=false,append=false,selection}={})=>{
+    add('selectText',source,`按住左键拖选${name}，只选需要的文字，不带上外面的引号`,{value:String(value)});
+    add('copyText',source,'按 Ctrl+C 复制选中文字，原来的资料保留');
+    if(selection)add('selectText',target,'选中草稿中的 ____，保留已经写好的内容',{value:selection});
+    else if(replace)ctrl(target,'a','点击高亮的输入框，按 Ctrl+A 选中原内容，准备替换');
+    else if(append)key(target,'End','点击草稿末尾，按 End，把光标移到已有内容后面');
+    add('paste',target,'在高亮的输入框中按 Ctrl+V 粘贴，核对内容、换行与标点');
+  };
   switch(kind){
     case 'click':(p.parcels||['green','orange','green','orange','orange','green']).forEach((color,i)=>{if(color===(p.targetColor||'green'))click(`[data-parcel="${i}"]`,'单击清单要求的'+(color==='orange'?'橙色':'绿色')+'资料包');});break;
     case 'double':add('double','#toolbox','在同一个资料图标上快速双击左键');break;
@@ -29,26 +37,38 @@ export function demoActions(task){
       add('paste','#destination-input','点击右侧输入框，按 Ctrl+V 粘贴',{value:recipe,settle:180});break;
     }
     case 'undo':key('#undo-input','End','点击便签，按 End 到文字末尾');fill('#undo-input',(p.original||'今天也是好日子')+(p.mark||'！'),'在末尾输入题目要求的一个标点');add('undo','#undo-input','按 Ctrl+Z，撤销刚输入的标点',{value:p.original||'今天也是好日子',settle:60});break;
-    case 'save':fill('#save-input',p.expected||'实验成功','在记录框中输入完整内容');ctrl('#save-input','s','在练习框中按 Ctrl+S 保存');break;
+    case 'save':reuse('.demo-question .instruction',p.expected||'实验成功','#save-input','题干中的记录内容');ctrl('#save-input','s','在练习框中按 Ctrl+S 保存');break;
     case 'crop':add('pointerDrag','#crop-canvas','从图卡左上角按住左键，拖到右下角后松开',{rect:p.crop||{x:160,y:75,w:540,h:350},width:860,height:500});break;
     case 'capture':add('systemCapture','#image-receiver','先用系统截图工具框选安全区域（这里演示截图过程）');add('imagePaste','#image-receiver','回到接收区，点击后按 Ctrl+V 粘贴截图',{settle:100});break;
-    case 'delivery':add('double','#message-file','双击消息文件，打开编辑区');ctrl('#message-input','a','点击消息框，按 Ctrl+A 选中旧消息');fill('#message-input',p.expected||'任务完成，出发！','输入任务要求的新消息');ctrl('#message-input','s','按 Ctrl+S，保存并派送');break;
+    case 'delivery':add('double','#message-file','双击消息文件，打开编辑区');reuse('.target-copy strong',p.expected||'任务完成，出发！','#message-input','“修改为”下的新消息',{replace:true});ctrl('#message-input','s','按 Ctrl+S，保存并派送');break;
     case 'files':{
       const names=p.files||['查证清单.txt','临时草稿.tmp','素材来源表.xlsx','旧版通知.txt'],targets=p.targets||[0,2],copy=p.operation==='copy';
-      click('#new-folder','点击工具栏中的“新建文件夹”');fill('#folder-name',p.folder||'查证资料','输入目标文件夹名称');key('#folder-name','Enter','按 Enter 确认名称');
+      // Copy before opening the name editor: clicking the assignment would commit its name on blur.
+      add('selectText','.fm-assignment','从上方清单中拖选目标文件夹名称，不包含前后的标点',{value:p.folder||'查证资料'});add('copyText','.fm-assignment','按 Ctrl+C 复制文件夹名，文字不用重新打');
+      click('#new-folder','点击工具栏中的“新建文件夹”，默认名称已选中');add('paste','#folder-name','按 Ctrl+V 粘贴刚才复制的文件夹名');key('#folder-name','Enter','按 Enter 确认名称');
       targets.forEach((i,n)=>click(`[data-file="${i}"]`,`${n?'按住 Ctrl，再单击':'先单击'}「${names[i]}」`,{ctrlKey:n>0}));
       click(`[data-fm-action="${copy?'copy':'cut'}"]`,copy?'点击“复制”（Ctrl+C），保留原件':'点击“剪切”（Ctrl+X），准备移动原件');
       add('double','[data-folder]','双击刚建立的目标文件夹');click('[data-fm-action="paste"]','点击“粘贴”（Ctrl+V），观察文件出现在目标目录');click('#fm-check','确认目录内容，点击“检查整理结果”');break;
     }
-    case 'document':ctrl('#word-title','a','点击标题，按 Ctrl+A 全选标题');for(const tool of p.tools||['bold','align','list'])click(`[data-word-tool="${tool}"]`,'点击“'+({bold:'加粗',align:'居中',list:'项目符号'})[tool]+'”按钮');fill('#word-body',p.body||'沿小路前往集合点。\n请带上饮用水，爱护自然。','对照资料单，补齐正文和换行');ctrl('#word-body','s','查看排版后按 Ctrl+S 保存');break;
-    case 'sheet':for(let i=0;i<3;i++){fill(`[data-cell="B${i+2}"]`,(p.values||[3,4,2])[i],`点击 B${i+2}，填写对应数值`);key(`[data-cell="B${i+2}"]`,'Tab','按 Tab，切换到下一格',{to:`[data-cell="B${i+3}"]`});}fill('[data-cell="B5"]','=SUM(B2:B4)','在 B5 输入求和公式 =SUM(B2:B4)');key('[data-cell="B5"]','Enter','按 Enter，让表格计算合计');break;
-    case 'search':ctrl('#search-document','h','点击文档，按 Ctrl+H 打开查找替换');fill('#find-text',p.find||'旧码头','在“查找”框填写旧词');fill('#replace-text',p.replace||'新码头','在“替换为”框填写新词');click('#replace-all','点击“全部替换”，观察文档变化');ctrl('#search-document','s','按 Ctrl+S 保存修订后的文档');break;
+    case 'document':{
+      ctrl('#word-title','a','点击标题，按 Ctrl+A 全选标题');for(const tool of p.tools||['bold','align','list'])click(`[data-word-tool="${tool}"]`,'点击“'+({bold:'加粗',align:'居中',list:'项目符号'})[tool]+'”按钮');
+      const body=p.body||'沿小路前往集合点。\n请带上饮用水，爱护自然。',initial=p.initialBody||'',at=initial.indexOf('____'),before=initial.slice(0,at),after=initial.slice(at+4),partial=at>=0&&body.startsWith(before)&&body.endsWith(after);
+      reuse('.app-brief',partial?body.slice(before.length,body.length-after.length):body,'#word-body',partial?'资料单中缺少的正文':'资料单中的完整正文',partial?{selection:'____'}:{replace:true});
+      ctrl('#word-body','s','查看排版和换行后按 Ctrl+S 保存');break;
+    }
+    case 'sheet':for(let i=0;i<3;i++){fill(`[data-cell="B${i+2}"]`,(p.values||[3,4,2])[i],`点击 B${i+2}，填写对应数值`);key(`[data-cell="B${i+2}"]`,'Tab','按 Tab，切换到下一格',{to:`[data-cell="B${i+3}"]`});}reuse('.app-brief','=SUM(B2:B4)','[data-cell="B5"]','资料单中的求和公式');key('[data-cell="B5"]','Enter','核对公式引用 B2 到 B4，按 Enter，让表格计算合计');break;
+    case 'search':ctrl('#search-document','h','点击文档，按 Ctrl+H 打开查找替换');reuse('.app-brief',p.find||'旧码头','#find-text','资料单中的旧词');reuse('.app-brief',p.replace||'新码头','#replace-text','资料单中的新词');click('#replace-all','点击“全部替换”，观察文档变化');ctrl('#search-document','s','按 Ctrl+S 保存修订后的文档');break;
     case 'settings':check(`[name="setting-theme"][value="${p.theme||'暖色'}"]`,true,'选择题目要求的主题');choose('#setting-size',p.size||'大号','打开文字大小列表，选择要求的字号');check('#setting-autosave',true,'勾选“启用自动保存”');click('#apply-settings','点击“应用设置”');break;
-    case 'mail':fill('#mail-to',p.to||'captain@town.test','在收件人框填写邮箱地址');fill('#mail-subject',p.subject||'今日探索报告','填写邮件主题');fill('#mail-body',p.body||'学习资料已整理好，分享前请检查来源。','补齐正文，写清需要分享的内容');check('#mail-attachment',true,'勾选本题要求的附件');click('#mail-send','核对收件人、正文和附件，点击发送');break;
+    case 'mail':{
+      reuse('.app-brief',p.to||'captain@town.test','#mail-to','资料单中的邮箱地址');reuse('.app-brief',p.subject||'今日探索报告','#mail-subject','资料单中的邮件主题');
+      const body=p.body||'学习资料已整理好，分享前请检查来源。',draft=p.draft||'',append=!!draft&&body.startsWith(draft)&&body!==draft;
+      if(body!==draft)reuse('.app-brief',append?body.slice(draft.length):body,'#mail-body',append?'资料单中缺少的正文':'资料单中的完整正文',append?{append:true}:{replace:true});
+      check('#mail-attachment',true,'勾选本题要求的附件');click('#mail-send','核对收件人、正文和附件，点击发送');break;
+    }
     case 'keys':key('#keys-input','Home','点击便签，按 Home 到行首');add('insert','#keys-input','在行首补上「'+(p.prefix||'通知：')+'」',{value:p.prefix||'通知：'});key('#keys-input','End','按 End 到行末');add('insert','#keys-input','补上句末标点',{value:p.suffix||'。'});click('#keys-submit','对照完整目标，点击“提交便签”');break;
-    case 'presentation':choose('#slide-layout','title-photo','打开版式列表，选择“标题与图片”');fill('#slide-title',p.title||'我的探索故事','点击幻灯片标题框，输入标题');add('drag','#slide-art','按住左侧插图，拖到幻灯片右侧图片区',{to:'#slide-drop',data:'quest-photo'});click('#slide-play','点击“预览放映”，查看标题与图片');break;
+    case 'presentation':choose('#slide-layout','title-photo','打开版式列表，选择“标题与图片”');reuse('.app-brief',p.title||'我的探索故事','#slide-title','资料单中的幻灯片标题');add('drag','#slide-art','按住左侧插图，拖到幻灯片右侧图片区',{to:'#slide-drop',data:'quest-photo'});click('#slide-play','点击“预览放映”，查看标题与图片');break;
     case 'browser':case 'browser-tabs':case 'browser-bookmark':case 'browser-find':case 'browser-download':{
-      fill('#browser-address',p.address||'town://it','点击地址栏，输入资料站网址');key('#browser-address','Enter','按 Enter 打开资料站');fill('#browser-query',p.query||'人工智能','在资料站搜索框输入关键词');add('submit','#browser-search','点击搜索按钮，比较标题、来源和日期');
+      click('.demo-hint-toggle','点击题干下方的“操作提示”，找到资料站网址');reuse('.demo-question-hint',p.address||'town://it','#browser-address','操作提示中的完整网址',{replace:true});key('#browser-address','Enter','按 Enter 打开资料站');reuse('.demo-question .instruction',p.query||'人工智能','#browser-query','题干中的搜索关键词');add('submit','#browser-search','点击搜索按钮，比较标题、来源和日期');
       const ids=p.targetIds||['source'];
       if(kind==='browser-tabs'){
         for(const id of ids)click(`[data-browser-new="${id}"]`,'点击“在新标签页打开”，保留这份资料');
