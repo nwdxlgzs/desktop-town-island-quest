@@ -6,8 +6,8 @@ import { mountMailReplyExercise } from './mail-reply-exercise.js';
 import { mountCalendarExercise } from './calendar-exercise.js';
 
 // These small local applications keep each task's content in JSON while verifying real interactions.
-export function mountOffice(kind,root,p,{on,later,finish,tell,shortcut,step}) {
-  const tools={on,later,finish,tell,shortcut,step};
+export function mountOffice(kind,root,p,{on,later,finish,tell,shortcut,step,resetRequired}) {
+  const tools={on,later,finish,tell,shortcut,step,resetRequired};
   if(['browser','browser-tabs','browser-bookmark','browser-find','browser-download'].includes(kind)){mountBrowserExercise(kind,root,p,tools);return true;}
   if(['sheet-sort','sheet-filter','sheet-chart'].includes(kind)){mountDataExercise(kind,root,p,tools);return true;}
   if(kind==='mail-reply'){mountMailReplyExercise(root,p,tools);return true;}

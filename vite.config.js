@@ -23,6 +23,7 @@ function singleFile() {
       }
       text = text.replace(/<link[^>]*rel="modulepreload"[^>]*>/g, '');
       html.source = await sealBuild(text);
+      this.emitFile({type:'asset',fileName:'电脑小镇·岛屿探索.html',source:html.source});
     },
   };
 }

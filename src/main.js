@@ -14,6 +14,8 @@ import { createOnboarding } from './onboarding.js';
 import { createCreditGuard } from './credit-guard.js';
 import { createSessionFlow,useSessionStep,cancelSession,dropSessionStep } from './session-flow.js';
 import { failedEvent,stopClass,stoppedFlag,roleAttribute,alertRole,stoppedMarkup,appSelector } from './check-strings.js';
+import { preview } from './state.js';
+import { mountTeachingLibrary } from './teaching-library.js';
 
 const app=document.querySelector(appSelector);
 app.innerHTML=`
@@ -137,6 +139,17 @@ function openTask(id){if(gameStopped||world?.isTraveling()||!currentLevel().task
   }});
 }
 const showGuide=mountGuide({showModal,icon,closeModal,onTour:()=>onboarding.start(true),creditMarkup:()=>creditGuard.markup,onMount:()=>creditGuard.watchGuide(modal)});
+if(preview){
+  const showTeachingLibrary=()=>{
+    if(gameStopped||world?.isTraveling())return;
+    showModal(`<div class="standard-modal-header"><div><span class="modal-icon">${icon('book',23)}</span><h2 id="modal-title">全题型教学 · 40 种</h2></div><button class="icon-button" data-close aria-label="关闭全题型教学">${icon('close',21)}</button></div><div class="teaching-library" id="teaching-library"></div>`,'lesson-modal');
+    cleanupExercise=mountTeachingLibrary(modal.querySelector('#teaching-library'),{tasks,taskIds,capture:()=>world?.capture()||''});
+  };
+  const button=document.createElement('button');button.id='teaching-library-nav';button.className='nav-button';button.innerHTML=`${icon('book',18)}全题型教学 · 40 种`;
+  document.querySelector('.main-nav').append(button);
+  button.addEventListener('click',showTeachingLibrary);
+  const worldButton=document.createElement('button');worldButton.id='teaching-library-world';worldButton.className='icon-button';worldButton.title='全题型教学 · 40 种';worldButton.setAttribute('aria-label','全题型教学 · 40 种');worldButton.innerHTML=icon('book',19);worldButton.addEventListener('click',showTeachingLibrary);document.querySelector('.world-tools').prepend(worldButton);
+}
 function showReport(){const data=report();showModal(`<div class="standard-modal-header"><div><span class="modal-icon">${icon('report',24)}</span><h2 id="modal-title">你的航行学习报告</h2></div><button class="icon-button" data-close aria-label="关闭报告">${icon('close',21)}</button></div><div class="report-body"><div class="report-hero"><span class="report-trophy">${icon('trophy',40)}</span><div><h3>${state.graduated?'电脑操作小达人，毕业啦！':'每一座岛，都留下了进步。'}</h3><p>${state.graduated?'你已经掌握全部本领。下一程，继续勇敢探索！':'完成本岛的任务，乘船继续探索。'}</p></div></div><div class="report-stats"><div><strong>${data.completed}<small> / ${taskIds.length}</small></strong><span>完成操作步骤</span></div><div><strong>${data.xp}<small> XP</small></strong><span>积累经验</span></div><div><strong>${levels.filter(levelComplete).length}<small> / ${levels.length}</small></strong><span>完成岛屿</span></div><div><strong>${Math.floor(data.activeSeconds/60)}<small> 分钟</small></strong><span>探索时间</span></div></div><div class="report-stations">${levels.map((level,i)=>{const s=stations.find(s=>s.id===level.workshops[0].theme);return `<details ${i===state.currentLevel?'open':''}><summary><span style="color:${s.color};background:${s.pale}">${icon(s.icon,20)}</span><b>${escapeHTML(level.name)}</b><small>${level.tasks.filter(completed).length} / ${level.tasks.length}</small>${icon('next',16)}</summary><div>${level.tasks.map(id=>`<p class="report-task ${completed(id)?'done':''}">${icon(completed(id)?'check':'target',16)}<b>${escapeHTML(tasks[id].title)}</b><small>${completed(id)?'已掌握':'待探索'}</small></p>`).join('')}</div></details>`;}).join('')}</div><p class="report-note">${icon('checks',16)}${data.missionCount} 个工坊任务，共 ${data.total} 个操作步骤；按每分钟 ${data.challengesPerMinute} 个工坊安排，目标 ${data.estimatedChallengeMinutes} 分钟。报告包含各岛任务、练习次数与完成时间。</p><div class="report-actions"><button class="text-button danger" id="reset-progress">${icon('reset',16)}重新开始</button><button class="secondary" id="export-report">${icon('download',17)}导出学习报告</button><button class="primary" id="continue-adventure">返回岛屿 ${icon('arrow',17)}</button></div></div>`,'report-modal');modal.querySelector('#export-report').addEventListener('click',()=>download(JSON.stringify(report(),null,2),'电脑小镇学习报告.json','application/json;charset=utf-8'));modal.querySelector('#continue-adventure').addEventListener('click',closeModal);modal.querySelector('#reset-progress').addEventListener('click',showResetConfirm);}
 function showResetConfirm(){showModal(`<div class="standard-modal-header"><h2 id="modal-title">重新开始这次航行？</h2><button class="icon-button" data-close aria-label="取消">${icon('close',21)}</button></div><div class="confirm-body">${icon('reset',38)}<p>这会清除当前浏览器的进度，并生成一条新的随机航线。可以先在课堂报告中导出记录。</p><div><button class="secondary" id="cancel-reset">保留进度</button><button class="primary danger-button" id="confirm-reset">重新开始</button></div></div>`,'confirm-modal');modal.querySelector('#cancel-reset').addEventListener('click',showReport);modal.querySelector('#confirm-reset').addEventListener('click',()=>{resetState();pendingTravel=null;renderIsland();world?.loadLevel(islandLayout);explorationUI.sync();closeModal();toast('新航线准备好了，欢迎再次启航。');});}
 const whenAnchored=fn=>()=>{if(!gameStopped&&!world?.isTraveling())fn();};

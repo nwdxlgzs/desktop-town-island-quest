@@ -3,6 +3,32 @@ import assert from 'node:assert/strict';
 import {createPracticeFiles} from '../src/practice-files.js';
 import {exerciseSteps} from '../src/exercise-guide.js';
 import {tasks,taskIds} from '../src/curriculum.js';
+import {taskTeaching,exerciseKindNames} from '../src/exercise-teaching.js';
+import {demoActions} from '../src/demo-actions.js';
+
+test('every course question has a complete tutorial with resolved task material',()=>{
+  const kinds=new Set(taskIds.map(id=>tasks[id].kind));assert.equal(kinds.size,40);assert.deepEqual(new Set(Object.keys(exerciseKindNames)),kinds);
+  for(const id of taskIds){const lesson=taskTeaching(tasks[id]);assert.ok(lesson.name,id);assert.ok(lesson.steps.length>=2,id);for(const step of lesson.steps){assert.ok(step.label&&step.help,id);assert.doesNotMatch(step.help+step.label,/undefined|\{\w+\}/,id);}const actions=demoActions(tasks[id]);assert.ok(actions.length>0,id);assert.ok(actions.every(action=>action.target&&action.label),id);}
+  for(const id of taskIds.filter(id=>tasks[id].kind==='files')){const lesson=taskTeaching(tasks[id]),text=lesson.steps.map(s=>s.help).join(' ');assert.ok(text.includes(tasks[id].params.folder));for(const i of tasks[id].params.targets)assert.ok(text.includes(tasks[id].params.files[i]));assert.match(text,/Ctrl/);}
+});
+
+test('deleting originals or moving them in backup questions explains reset; deleting copies is recoverable',()=>{
+  const fs=createPracticeFiles(['清单.txt','草稿.tmp','数据.csv']),folder=fs.folder('root');fs.rename(folder.id,'备份');
+  assert.equal(fs.completionIssue([0,2],true),null);
+  fs.transfer(['file-0'],folder.id);assert.equal(fs.completionIssue([0,2],true).kind,'moved-original');
+  assert.equal(fs.completionIssue([0,2]),null,'move questions allow moving originals');
+  fs.transfer(['file-0'],'root');assert.equal(fs.completionIssue([0,2],true),null);
+  fs.transfer(['file-0','file-2'],folder.id,true);const copies=fs.list(folder.id).map(e=>e.id);fs.remove([copies[0]]);assert.equal(fs.completionIssue([0,2],true),null);
+  fs.remove(['file-0']);assert.equal(fs.completionIssue([0,2],true).kind,'deleted-original');assert.equal(fs.matches('备份',[0,2],true),false);
+});
+
+test('recursive deletion removes folder contents, and other originals must remain in the source area',()=>{
+  const fs=createPracticeFiles(['目标.txt','保留.txt']),folder=fs.folder('root');fs.rename(folder.id,'归档');fs.transfer(['file-0','file-1'],folder.id);
+  fs.transfer(['file-1'],'root');assert.equal(fs.matches('归档',[0]),true);
+  const other=fs.folder('root');fs.transfer(['file-1'],other.id);assert.equal(fs.matches('归档',[0]),false,'unlisted originals must stay at root');
+  fs.remove([other.id]);assert.match(fs.completionIssue([0]).message,/保留.txt/);
+  fs.remove([folder.id]);assert.equal(fs.entries.has(folder.id),false);assert.equal(fs.entries.has('file-0'),false);assert.equal(fs.entries.has('root'),true);
+});
 
 test('folders exist immediately, rename safely and contain genuinely moved files',()=>{
   const fs=createPracticeFiles(['核查.txt','草稿.tmp','来源.pdf']),a=fs.folder('root'),b=fs.folder('root');

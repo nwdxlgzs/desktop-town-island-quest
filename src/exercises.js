@@ -3,23 +3,33 @@ import { download } from './state';
 import { tasks } from './curriculum.js';
 import { mountOffice } from './office-exercises.js';
 import { mountExerciseGuide } from './exercise-guide.js';
+import { mountExerciseTeaching } from './exercise-teaching.js';
+import { openExerciseDemo } from './exercise-demo.js';
+import './teaching.css';
 
 const order = 'Hello, AI!';
 const field = (id,label,value='',placeholder='',readonly=false) => `<label class="field-label" for="${id}">${escapeHTML(label)}</label><textarea id="${id}" class="practice-input" spellcheck="false" ${readonly?'readonly':''} placeholder="${escapeHTML(placeholder)}">${escapeHTML(value)}</textarea>`;
 const deskHeader=(iconName,title,subtitle)=>`<div class="desk-heading"><span>${icon(iconName,20)} ${title}</span><small>${subtitle}</small></div>`;
 
-export function mountExercise(taskId, root, { success, feedback, capture, sound }) {
+export function mountExercise(taskId, root, { success, feedback, capture, sound, teaching=true }) {
   const task=tasks[taskId],id=task.kind,p=task.params||{},recipe=p.recipe||'查来源，看日期，核实重要信息。',selectionText=p.text||'重要信息还要查证';
-  const controller=new AbortController();const options={signal:controller.signal};let done=false,timers=[],coach=null;const guideDone=new Set();
+  const controller=new AbortController();const options={signal:controller.signal};let done=false,timers=[],coach=null,restarted=null,demo=null;const guideDone=new Set();
   function step(index,good=true){const changed=good?!guideDone.has(index):guideDone.has(index);if(!changed)return;good?guideDone.add(index):guideDone.delete(index);coach?.update();}
   function on(el,event,fn,extra={}){el?.addEventListener(event,fn,{...options,...extra});}
   function later(fn,ms=40){timers.push(setTimeout(fn,ms));}
   function finish(){if(done)return false;done=true;if(success()===false)return false;coach?.complete();sound('success');return true;}
   function tell(text,good=false){feedback(text,good);if(!good)sound('tap');}
+  function requireReset(message){
+    if(done||root.querySelector('.exercise-recovery'))return;
+    const notice=document.createElement('div');notice.className='exercise-recovery';notice.setAttribute('role','alert');notice.innerHTML=`<p>${escapeHTML(message)} 请点击“重置本题”后按教学重新操作。</p><button type="button">重置本题</button>`;
+    const teaching=root.querySelector('.exercise-teaching');if(teaching)teaching.after(notice);else root.prepend(notice);
+    on(notice.querySelector('button'),'click',()=>{demo?.dispose();controller.abort();timers.forEach(clearTimeout);restarted=mountExercise(taskId,root,{success,feedback,capture,sound,teaching});tell('本题已重置，原始材料已恢复。',true);});
+    tell(message+' 请重置本题。');
+  }
   function shortcut(e,key){return (e.ctrlKey||e.metaKey)&&e.key.toLowerCase()===key;}
   function confirmInput(el,expected){on(el,'input',e=>{step(0,el.value.length>0);if(!e.isComposing&&el.value===expected)finish();});on(el,'compositionend',()=>later(()=>{if(el.value===expected)finish();}));}
 
-  if(mountOffice(id,root,p,{on,later,finish,tell,shortcut,step})){
+  if(mountOffice(id,root,p,{on,later,finish,tell,shortcut,step,resetRequired:requireReset})){
   }else if(id==='hover'){
     const target=p.target||'救生圈',tip=p.tip||'把鼠标停在这里查看说明';
     root.innerHTML=deskHeader('help','数字工具说明台','移动鼠标，发现隐藏提示')+`<div class="hover-desk"><div class="hover-supply" id="hover-supply" tabindex="0" aria-label="${escapeHTML(target)}"><span class="supply-orb">${icon('package',38)}</span><b>${escapeHTML(target)}</b><small>把鼠标停在这里</small><span class="hover-tooltip" role="status">${escapeHTML(tip)}</span></div><div class="hover-supply muted"><span class="supply-orb">${icon('file',31)}</span><b>其他工具</b><small>没有特别提示</small></div></div><div class="hover-answer" id="hover-answer" hidden><span>刚才的提示说明了什么？</span><button data-hover-answer="wrong">装饰工坊的窗台</button><button data-hover-answer="correct">${escapeHTML(tip)}</button></div>`;
@@ -66,6 +76,7 @@ export function mountExercise(taskId, root, { success, feedback, capture, sound 
     on(source,'keydown',e=>{if(shortcut(e,'a')){selectRequested=true;later(()=>{if(source.selectionStart===0&&source.selectionEnd===recipe.length){selected=true;flag('select');tell('全选完成。接下来用 '+(cut?'Ctrl+X 剪切。':'Ctrl+C 复制。'),true);}});}if(shortcut(e,cut?'x':'c')&&selectRequested&&source.selectionStart===0&&source.selectionEnd===recipe.length){selected=true;flag('select');transfer=true;flag('copy');}});
     on(dst,'keydown',e=>{if(shortcut(e,'v')&&transfer){pasted=true;flag('paste');later(check,150);}});on(dst,'input',check);on(source,'input',check);
     on(dst,'paste',()=>later(check,150));
+    if(cut)on(source,'input',()=>{if(!transfer&&source.value!==recipe)requireReset('操作有误：原始文字在正确剪切之前已被修改，后续无法完成本题要求的全选剪切。');});
   }else if(id==='undo'){
     const original=p.original||'今天也是好日子';
     const mark=p.mark||(/[\u4e00-\u9fff]/.test(original)?'！':'!');
@@ -97,5 +108,6 @@ export function mountExercise(taskId, root, { success, feedback, capture, sound 
     const file=root.querySelector('#message-file'),input=root.querySelector('#message-input');on(input,'input',()=>step(1,input.value===message));on(file,'dblclick',()=>{step(0);root.querySelector('#delivery-file').hidden=true;root.querySelector('#message-editor').hidden=false;input.focus();tell(`文件打开了！将内容改成「${message}」。`,true);});on(root,'keydown',e=>{if(shortcut(e,'s')&&!root.querySelector('#message-editor').hidden){e.preventDefault();if(input.value===message){if(finish())root.querySelector('#message-save').textContent='已保存并派送';}else tell(`内容还没改好。完整消息是「${message}」。`);}});on(file,'click',()=>tell(`快速双击「${fileName}」打开文件。`));
   }
   coach=mountExerciseGuide(root,task,guideDone);
-  return ()=>{controller.abort();timers.forEach(clearTimeout);window.getSelection()?.removeAllRanges();};
+  if(teaching)mountExerciseTeaching(root,task,on,()=>{demo?.dispose();demo=openExerciseDemo(taskId,{capture});});
+  return ()=>{demo?.dispose();restarted?.();controller.abort();timers.forEach(clearTimeout);window.getSelection()?.removeAllRanges();};
 }

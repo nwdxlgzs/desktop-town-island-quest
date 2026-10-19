@@ -8,7 +8,13 @@ const steps=[
 ];
 
 export function createOnboarding({isComplete,onComplete,isFullscreen}){
-  let layer=null,index=0,controller=null,observer=null,frame=0,target=null,oldDescription=null;
+  let layer=null,index=0,controller=null,observer=null,frame=0,target=null,oldDescription=null,reminder=0;
+  function nudge(){
+    if(!layer)return;
+    layer.classList.add('needs-attention');
+    layer.querySelector('#onboarding-required').textContent=`游戏仍在暂停中！还剩 ${steps.length-index} 步指引，请点击下方按钮继续，完成全部步骤后才能操作。也可以明确点击“跳过并开始”。`;
+    schedulePosition();
+  }
   function clearTarget(){
     if(!target)return;
     if(oldDescription===null)target.removeAttribute('aria-describedby');else target.setAttribute('aria-describedby',oldDescription);
@@ -16,7 +22,7 @@ export function createOnboarding({isComplete,onComplete,isFullscreen}){
   }
   function finish(remember=true){
     if(!layer)return;
-    clearTarget();controller.abort();observer.disconnect();cancelAnimationFrame(frame);frame=0;
+    clearTarget();controller.abort();observer.disconnect();cancelAnimationFrame(frame);clearTimeout(reminder);frame=0;
     layer.remove();layer=null;if(remember)onComplete();document.querySelector('#world-container canvas')?.focus({preventScroll:true});
   }
   function next(){if(index===steps.length-1)finish();else{index++;render();}}
@@ -34,24 +40,26 @@ export function createOnboarding({isComplete,onComplete,isFullscreen}){
   }
   function schedulePosition(){if(!frame)frame=requestAnimationFrame(()=>{frame=0;position();});}
   function render(){
-    clearTarget();const step=steps[index];target=document.querySelector(step.target);
+    clearTarget();clearTimeout(reminder);layer.classList.remove('needs-attention');const step=steps[index];target=document.querySelector(step.target);
     if(!target){finish();return;}
     oldDescription=target.getAttribute('aria-describedby');target.setAttribute('aria-describedby','onboarding-text');
     layer.dataset.step=String(index);
     layer.querySelector('.onboarding-count').textContent=`启航前的小提示 · ${index+1} / ${steps.length}`;
     layer.querySelector('#onboarding-title').textContent=step.title;layer.querySelector('#onboarding-text').textContent=step.text;
+    layer.querySelector('#onboarding-required').textContent='游戏已暂停。请完成全部 4 步指引，或点击“跳过并开始”，才能使用游戏。只打开全屏还没有完成指引。';
     layer.querySelector('#onboarding-next').textContent=index===0&&isFullscreen()?'已经全屏，继续':step.action;
     layer.querySelector('#onboarding-back').hidden=index===0;
     layer.querySelectorAll('.onboarding-dot').forEach((el,i)=>el.classList.toggle('current',i===index));
     if(index===0)target.scrollIntoView({block:'nearest',inline:'nearest'});
     position();schedulePosition();
     (index===0?target:layer.querySelector('#onboarding-next')).focus({preventScroll:true});
+    reminder=setTimeout(nudge,10000);
   }
   function start(force=false){
     if(layer||!force&&isComplete())return false;
     index=0;controller=new AbortController();const options={signal:controller.signal};
     layer=document.createElement('div');layer.className='onboarding-layer';layer.setAttribute('role','dialog');layer.setAttribute('aria-modal','true');layer.setAttribute('aria-labelledby','onboarding-title');
-    layer.innerHTML=`${'<div class="onboarding-shade"></div>'.repeat(4)}<div class="onboarding-ring" aria-hidden="true"></div><section class="onboarding-card"><div class="onboarding-top"><span class="onboarding-count"></span><button id="onboarding-skip">跳过指引</button></div><h2 id="onboarding-title"></h2><p id="onboarding-text"></p><div class="onboarding-bottom"><div class="onboarding-dots" aria-hidden="true">${'<i class="onboarding-dot"></i>'.repeat(steps.length)}</div><button id="onboarding-back">上一步</button><button class="primary" id="onboarding-next"></button></div></section>`;
+    layer.innerHTML=`${'<div class="onboarding-shade"></div>'.repeat(4)}<div class="onboarding-ring" aria-hidden="true"></div><section class="onboarding-card"><div class="onboarding-top"><span class="onboarding-count"></span><button id="onboarding-skip">跳过并开始</button></div><h2 id="onboarding-title"></h2><p id="onboarding-text"></p><p class="onboarding-required" id="onboarding-required" role="status" aria-live="polite"></p><div class="onboarding-bottom"><div class="onboarding-dots" aria-hidden="true">${'<i class="onboarding-dot"></i>'.repeat(steps.length)}</div><button id="onboarding-back">上一步</button><button class="primary" id="onboarding-next"></button></div></section>`;
     document.body.append(layer);
     layer.querySelector('#onboarding-skip').addEventListener('click',finish,options);
     layer.querySelector('#onboarding-back').addEventListener('click',()=>{index--;render();},options);
@@ -59,16 +67,22 @@ export function createOnboarding({isComplete,onComplete,isFullscreen}){
       if(index===0&&!isFullscreen())target.click();else next();
     },options);
     document.addEventListener('click',e=>{
-      if(!target?.contains(e.target)||layer.contains(e.target))return;
-      if(index===0)return;
-      e.preventDefault();e.stopImmediatePropagation();
+      if(layer.querySelector('.onboarding-card').contains(e.target)||index===0&&target?.contains(e.target))return;
+      e.preventDefault();e.stopImmediatePropagation();nudge();
+    },{...options,capture:true});
+    document.addEventListener('pointerdown',e=>{
+      if(layer.querySelector('.onboarding-card').contains(e.target)||index===0&&target?.contains(e.target))return;
+      e.preventDefault();e.stopImmediatePropagation();nudge();
     },{...options,capture:true});
     // Observe after the real button handler has changed the layout. A
     // microtask in capture can run before that handler for native mouse input.
     document.addEventListener('click',e=>{if(index===0&&target?.contains(e.target)&&isFullscreen())next();},options);
     document.addEventListener('keydown',e=>{
-      if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();finish();return;}
-      if(e.key!=='Tab')return;
+      if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();nudge();layer.querySelector('#onboarding-next').focus({preventScroll:true});return;}
+      if(e.key!=='Tab'){
+        if(!layer.querySelector('.onboarding-card').contains(e.target)&&!(index===0&&target?.contains(e.target)&&['Enter',' '].includes(e.key))){e.preventDefault();e.stopImmediatePropagation();nudge();}
+        return;
+      }
       const controls=[...(index===0?[target]:[]),...layer.querySelectorAll('button:not([hidden])')],current=controls.indexOf(document.activeElement);
       e.preventDefault();e.stopImmediatePropagation();controls[(current+(e.shiftKey?-1:1)+controls.length)%controls.length].focus({preventScroll:true});
     },{...options,capture:true});

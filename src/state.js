@@ -2,7 +2,8 @@ import { taskIds, tasks, stations, levels, biomes, totalXP, stationTasks, target
 import { normalizeQuality,migrateQuality } from './quality.js';
 import { useSessionStep } from './session-flow.js';
 const KEY = 'desktop-quest-v3';
-const preview=globalThis.location?.hash==='#BYPASS',saveKey=preview?`${KEY}-demo`:KEY;
+export const preview=globalThis.location?.hash==='#BYPASS';
+const saveKey=preview?`${KEY}-demo`:KEY;
 function prepareProgress(result){
   if(preview){
     result.completed=[...taskIds];result.unlocked=levels.length-1;result.onboardingVersion=1;result.graduated=true;

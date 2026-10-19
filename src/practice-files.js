@@ -20,10 +20,17 @@ export function createPracticeFiles(names){
     return null;
   }
   function remove(ids){for(const id of ids)if(id!=='root'&&entries.has(id)){for(const child of list(id))remove([child.id]);entries.delete(id);}}
+  function completionIssue(targets,copy=false){
+    const missing=originals.find(id=>!entries.has(id));
+    if(missing)return {kind:'deleted-original',message:`操作有误：原始文件「${names[originals.indexOf(missing)]}」已被删除，同名副本不能代替原件，本题已无法按原要求完成。请重置本题后重新操作。`};
+    const moved=copy?targets.find(i=>entries.get(originals[i]).parent!=='root'):undefined;
+    if(moved!==undefined)return {kind:'moved-original',message:`操作有误：本题要求复制并保留原件，但「${names[moved]}」的原件已被移动。请重置本题，使用“复制 → 粘贴”重新备份。`};
+    return null;
+  }
   function matches(folderName,targets,copy=false){
     const dest=list('root').find(e=>e.type==='folder'&&e.name===folderName);if(!dest)return false;
     const content=list(dest.id),expected=targets.map(i=>originals[i]);
-    return content.length===expected.length&&expected.every(id=>content.some(e=>e.source===id))&&expected.every(id=>entries.get(id)?.parent===(copy?'root':dest.id));
+    return content.length===expected.length&&expected.every(id=>content.some(e=>e.source===id))&&originals.every(id=>entries.get(id)?.parent===(!copy&&expected.includes(id)?dest.id:'root'));
   }
-  return {entries,originals,list,rename,folder,transfer,remove,matches};
+  return {entries,originals,list,rename,folder,transfer,remove,matches,completionIssue};
 }
