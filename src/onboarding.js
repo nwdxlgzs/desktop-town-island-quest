@@ -3,7 +3,7 @@ import './onboarding.css';
 const steps=[
   {target:'#fullscreen',title:'先打开游戏全屏',text:'点击亮起来的全屏按钮，让小岛铺满窗口。以后再点一次，或按 Esc，就能退出全屏。',action:'试试游戏全屏'},
   {target:'#world-container',title:'走进工坊，动手试一试',text:'点击地面可以走路，点击工坊牌子或整个工作区可以前往练习。也可以用 WASD 或方向键移动，靠近工作区按 E 开始。按住 Shift 跑步，空格跳跃。',action:'记住了，下一步'},
-  {target:'#island-route',title:'完成工坊，乘船去下一岛',text:'这里可以查看岛屿航线。完成本岛的全部工坊后，点击码头小船或靠近按 E 启航；解锁过的岛屿也可以乘船往返。',action:'下一步'},
+  {target:'#island-route',title:'探索工坊，乘船去下一岛',text:'这里可以查看岛屿航线。每个工坊至少完成 1 题，且本岛题目完成至少 60%，就能点击码头小船或靠近按 E 启航。全做完才主动提示；已解锁的岛可乘船返回补做。',action:'下一步'},
   {target:'#quality-settings',title:'画质和帮助，随时都能找',text:'齿轮可以调整画质和查看 FPS。右上角的问号打开操作手册，也能重看这份按钮指引。探索进度会自动保存。',action:'出发，探索小岛'}
 ];
 

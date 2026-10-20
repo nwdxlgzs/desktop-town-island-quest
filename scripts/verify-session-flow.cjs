@@ -29,7 +29,9 @@ const assert=require('node:assert/strict');
     assert.deepEqual(refused,{travel:false,visit:false,attemptsUnchanged:true,level:0});
     await page.unroute('**/src/main.js');await page.reload();await page.waitForFunction(()=>window.__quest?.world);
     // One normal trip covers boarding, world creation, landing and persistence.
-    await page.evaluate(()=>{const q=__quest;q.state.completed=[...q.levels[0].tasks];q.refresh();q.world.goToBoat();});
+    await page.evaluate(()=>{const q=__quest,level=q.levels[0],done=level.workshops.map(w=>w.tasks[0]);for(const id of level.tasks)if(done.length<Math.ceil(level.tasks.length*.6)&&!done.includes(id))done.push(id);q.state.completed=done;q.refresh();});
+    assert.equal(await page.locator('#boat-marker.ready').count(),0,'partial eligibility must not show the full-completion boat prompt');
+    await page.evaluate(()=>__quest.world.goToBoat());
     await page.waitForFunction(()=>__quest.state.currentLevel===1,{},{timeout:25000});
     assert.equal(await page.evaluate(()=>__quest.world.getDebugSnapshot().islandCount),1);assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('desktop-quest-v3')).currentLevel),1);
     const idleReads=await page.evaluate(async()=>{
@@ -61,6 +63,6 @@ const assert=require('node:assert/strict');
     });
     for(const r of records){const valid=r.mode==='valid';assert.equal(r.result,valid?true:null,r.kind+' '+r.mode);assert.equal(r.record,valid?r.expected:null);assert.equal(r.persisted,valid?r.expected:null);assert.equal(r.completed,valid);assert.equal(r.storedCompleted,valid);assert.equal(r.savedUI,valid);assert.equal(r.sounds,valid?1:0);}
     assert.deepEqual(errors,[]);
-    console.log(JSON.stringify({shutdownNoopStillRejectsProgress:true,forgedTrueRejected:true,restoredTextDoesNotReviveSession:true,normalBoatArrival:true,idleCheckpointReads:idleReads,exerciseRecordCases:records.map(({kind,mode})=>({kind,mode,passed:true})),errors},null,2));
+    console.log(JSON.stringify({shutdownNoopStillRejectsProgress:true,forgedTrueRejected:true,restoredTextDoesNotReviveSession:true,partialCompletionBoatArrival:true,idleCheckpointReads:idleReads,exerciseRecordCases:records.map(({kind,mode})=>({kind,mode,passed:true})),errors},null,2));
   }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});
