@@ -99,7 +99,7 @@ try{
   const boat=world.getDebugSnapshot().boat,point=world.screenPoint(boat.x,.85,boat.z);
   event(rendererInstance.domElement,'pointerdown',{...point,clientX:point.x,clientY:point.y,button:0,pointerId:1});
   results.boatPick={groundPicks:globalThis.__worldCpuCounts.groundPicks,routeRemaining:world.getDebugSnapshot().routeRemaining};
-  assert.equal(results.boatPick.groundPicks,0,'dynamic boat hit volume must stay clickable');assert.ok(results.boatPick.routeRemaining>0);
+  assert.equal(results.boatPick.groundPicks,1,'one click-time ground ray checks depth without per-frame picking');assert.ok(results.boatPick.routeRemaining>0,'dynamic boat hit volume must stay clickable');
   const home=layout.npcSpawns[workshops[0].id];world.loadLevel({...layout,spawn:{x:home.x,z:home.z+.5}});step(4);
   const frozen=world.getDebugSnapshot();world.interact();step(6);const waving=world.getDebugSnapshot();
   assert.ok(waving.npcs.some(n=>n.arm>1),'a frozen resident still responds to E with a greeting');assert.ok(waving.npcSimSteps>frozen.npcSimSteps);

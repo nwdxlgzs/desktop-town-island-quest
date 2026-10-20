@@ -1,4 +1,9 @@
+import { onLand } from './shoreline.js';
+
 export const terrainTileSize=1.3;
+export const terrainTopOffset=.075;
+// Includes normal walking arm/leg swing and the backpack in any facing direction.
+export const playerRadius=.57;
 export const maxStepHeight=.6;
 export const riverX=(layout,z)=>layout.river.x+Math.sin(z*.19+layout.river.phase)*layout.river.amplitude;
 export function waterAt(layout,x,z,margin=0){
@@ -12,6 +17,40 @@ function bankDistance(layout,x,z){
 }
 const smooth=p=>{p=Math.max(0,Math.min(1,p));return p*p*(3-2*p);};
 const heightCaches=new WeakMap();
+const cellCaches=new WeakMap();
+
+export function terrainCellAt(layout,x,z){
+  const size=terrainTileSize,ix=Math.floor((x+layout.width/2)/size),iz=Math.floor((z+layout.depth/2)/size);
+  const cx=-layout.width/2+(ix+.5)*size,cz=-layout.depth/2+(iz+.5)*size;
+  if(ix<0||iz<0||cx>layout.width/2||cz>layout.depth/2)return null;
+  let cache;if(layout.terrainReady){cache=cellCaches.get(layout);if(!cache){cache=new Map();cellCaches.set(layout,cache);}if(cache.has(ix*65536+iz))return cache.get(ix*65536+iz);}
+  const exists=onLand(layout,cx,cz),wet=exists&&waterAt(layout,cx,cz),elevation=exists?(wet?0:elevationAt(layout,cx,cz)):0;
+  const cell=exists?{x:cx,z:cz,ix,iz,wet,elevation,top:elevation+(wet?-terrainTopOffset:terrainTopOffset)}:null;
+  cache?.set(ix*65536+iz,cell);return cell;
+}
+
+// Check the whole circular footprint against the very same voxel tops that
+// are drawn. A centre-only height check lets shoulders enter a vertical cliff.
+export function terrainFootprintBlocked(layout,x,z,radius,allowWater=false){
+  const center=terrainCellAt(layout,x,z);if(!center)return true;
+  if(radius<=terrainTileSize/2){
+    if(center.clearNeighborhood===undefined)center.clearNeighborhood=[-1,0,1].every(dx=>[-1,0,1].every(dz=>{
+      const cell=terrainCellAt(layout,center.x+dx*terrainTileSize,center.z+dz*terrainTileSize);
+      return cell&&!cell.wet&&Math.abs(cell.elevation-center.elevation)<=maxStepHeight+1e-5;
+    }));
+    if(center.clearNeighborhood)return false;
+  }
+  let waterAllowed;
+  const size=terrainTileSize,half=size/2,minX=Math.floor((x-radius+layout.width/2)/size),maxX=Math.floor((x+radius+layout.width/2)/size),minZ=Math.floor((z-radius+layout.depth/2)/size),maxZ=Math.floor((z+radius+layout.depth/2)/size);
+  for(let ix=minX;ix<=maxX;ix++)for(let iz=minZ;iz<=maxZ;iz++){
+    const cx=-layout.width/2+(ix+.5)*size,cz=-layout.depth/2+(iz+.5)*size,dx=Math.max(0,Math.abs(x-cx)-half),dz=Math.max(0,Math.abs(z-cz)-half);
+    if(dx*dx+dz*dz>radius*radius+1e-10)continue;
+    const cell=terrainCellAt(layout,cx,cz);
+    if(!cell||Math.abs(cell.elevation-center.elevation)>maxStepHeight+1e-5)return true;
+    if(cell.wet){waterAllowed??=typeof allowWater==='function'?allowWater(layout,x,z,radius):allowWater;if(!waterAllowed)return true;}
+  }
+  return false;
+}
 
 // The same voxel surface drives rendering, foot placement and traversability.
 export function elevationAt(layout,x,z){
@@ -85,6 +124,23 @@ export function supportScenery(layout){
   for(const {object,key,pad} of supports)object[key]=pad.height;
 }
 export function canWalkSegment(layout,from,to){
+  if(layout.terrain){
+    // Visit every crossed voxel, including a tiny diagonal corner that a fixed
+    // sampling interval could skip. Continuous legacy fixtures use sampling below.
+    const times=[0,1];
+    for(const [axis,extent]of [['x',layout.width],['z',layout.depth]]){
+      const delta=to[axis]-from[axis];if(Math.abs(delta)<1e-12)continue;
+      const low=Math.min(from[axis],to[axis]),high=Math.max(from[axis],to[axis]);
+      for(let i=Math.floor((low+extent/2)/terrainTileSize)+1; i*terrainTileSize-extent/2<high;i++)times.push((i*terrainTileSize-extent/2-from[axis])/delta);
+    }
+    times.sort((a,b)=>a-b);let last=walkingHeightAt(layout,from.x,from.z);
+    for(let i=1;i<times.length;i++){
+      if(times[i]-times[i-1]<1e-10)continue;
+      const t=(times[i]+times[i-1])/2,h=walkingHeightAt(layout,from.x+(to.x-from.x)*t,from.z+(to.z-from.z)*t);
+      if(Math.abs(h-last)>maxStepHeight+1e-5)return false;last=h;
+    }
+    return Math.abs(walkingHeightAt(layout,to.x,to.z)-last)<=maxStepHeight+1e-5;
+  }
   const n=Math.max(1,Math.ceil(Math.hypot(to.x-from.x,to.z-from.z)/.15));
   let last=walkingHeightAt(layout,from.x,from.z);
   for(let i=1;i<=n;i++){

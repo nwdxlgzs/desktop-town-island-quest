@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {levels,configureJourney} from '../src/curriculum.js';
 import {createLayout,blockedAt,onLand} from '../src/level-layout.js';
 import {findPath,clearSegment,createNavigator} from '../src/navigation.js';
-import {elevationAt,walkingHeightAt,canWalkSegment,maxStepHeight} from '../src/terrain.js';
+import {elevationAt,walkingHeightAt,canWalkSegment,maxStepHeight,playerRadius} from '../src/terrain.js';
 import {createLadderClimb,tickLadderClimb,ladderFrame} from '../src/ladder-motion.js';
 
 test('three changed-generator samples have reachable workshops, layered shores and legal routes',()=>{
@@ -12,11 +12,13 @@ test('three changed-generator samples have reachable workshops, layered shores a
     const l=createLayout(route[index],17);assert.ok(l.workshops.length<=6);assert.equal(l.shoreline.shape,'freeform');
     const edgeHeights=l.shoreline.points.map(p=>elevationAt(l,p.x*.96,p.z*.96));assert.ok(Math.max(...edgeHeights)>=1);
     assert.ok(l.wildlife.length<=4);assert.equal(l.exploration.filter(d=>d.type==='shard').length,3);
+    assert.ok(findPath(l.spawn,l.dock,(x,z)=>blockedAt(l,x,z,playerRadius),l.bounds,(a,b)=>canWalkSegment(l,a,b),l.ladders).length,'dock remains reachable with full body clearance after fences and lamps');
+    for(const f of l.fences)assert.equal(blockedAt(l,f.x+(f.axis==='x'?f.length/2:0),f.z+(f.axis==='z'?f.length/2:0),0),true,'rendered rails have physical collision');
     for(const m of l.mountains)for(let x=m.x-m.w/2;x<m.x+m.w/2;x+=.5)for(let z=m.z-m.d/2;z<m.z+m.d/2;z+=.5)assert.equal(elevationAt(l,x,z),m.baseHeight,'mountain base matches terrain across its full footprint');
     const supports=[...l.villages.flatMap(v=>v.houses.map(h=>({...h,height:h.baseHeight}))),...l.camps.flatMap(c=>[{x:c.x-1,z:c.z-.6,w:2,d:1.9,height:c.tentHeight},{x:c.x+1.2,z:c.z+.7,w:1.6,d:1.6,height:c.fireHeight},{x:c.x+.5,z:c.z+1.7,w:1.7,d:.35,height:c.benchHeight}])];
     for(const p of supports)for(let x=p.x-p.w/2;x<=p.x+p.w/2;x+=.5)for(let z=p.z-p.d/2;z<=p.z+p.d/2;z+=.5)assert.equal(elevationAt(l,x,z),p.height,'scenery footprint fits the actual terrain');
     for(const w of l.workshops){
-      const goal={x:w.approach[0],z:w.approach[1]},path=findPath(l.spawn,goal,(x,z)=>blockedAt(l,x,z),l.bounds,(a,b)=>canWalkSegment(l,a,b),l.ladders);
+      const goal={x:w.approach[0],z:w.approach[1]},path=findPath(l.spawn,goal,(x,z)=>blockedAt(l,x,z,playerRadius),l.bounds,(a,b)=>canWalkSegment(l,a,b),l.ladders);
       assert.ok(path.length);assert.ok(Math.hypot(path.at(-1).x-goal.x,path.at(-1).z-goal.z)<.15);
       let last=l.spawn;for(const p of path){assert.ok(p.ladder||canWalkSegment(l,last,p));last=p;}
       assert.ok(onLand(l,...w.position));

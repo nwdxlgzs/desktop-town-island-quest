@@ -6,11 +6,13 @@ export { onLand } from './shoreline.js';
 
 import { randomSource } from './random.js';
 export { randomSource } from './random.js';
-import { elevationAt, waterAt, riverX, canWalkSegment, supportMountain,supportScenery } from './terrain.js';
+import { elevationAt, waterAt, riverX, canWalkSegment, supportMountain,supportScenery,terrainFootprintBlocked,playerRadius } from './terrain.js';
 import { placeExploration } from './exploration-layout.js';
 import { harbourBerth } from './voyage.js';
 import { streetLamps } from './street-lamps.js';
 import { workshopArchitecture,workshopApplication,chooseWorkshopDesign } from './workshop-designs.js';
+import { coastalFences } from './fence-layout.js';
+import { mountainObstacles } from './mountain-shape.js';
 export { waterAt, riverX } from './terrain.js';
 
 function distanceToSegment(p, a, b) {
@@ -49,10 +51,18 @@ function nearbyObstacles(layout,x,z) {
   }
   return obstacleIndices.get(layout).get(`${Math.floor(x/4)},${Math.floor(z/4)}`)||[];
 }
+const bridgeClearance=(layout,x,z,radius)=>nearRoad(layout,{x,z},Math.max(.2,.95-radius));
 export function blockedAt(layout, x, z, radius=.28) {
-  if(!onLand(layout,x,z,radius+.12))return true;
-  if(waterAt(layout,x,z,radius) && !nearRoad(layout,{x,z},Math.max(.2,.95-radius)))return true;
-  return nearbyObstacles(layout,x,z).some(o=>Math.abs(x-o.x)<o.w/2+radius && Math.abs(z-o.z)<o.d/2+radius);
+  if(layout.terrain&&layout.terrainReady){
+    if(terrainFootprintBlocked(layout,x,z,radius,bridgeClearance))return true;
+  }else{
+    if(!onLand(layout,x,z,radius+.12))return true;
+    if(waterAt(layout,x,z,radius) && !nearRoad(layout,{x,z},Math.max(.2,.95-radius)))return true;
+  }
+  return nearbyObstacles(layout,x,z).some(o=>{
+    const dx=Math.max(0,Math.abs(x-o.x)-o.w/2),dz=Math.max(0,Math.abs(z-o.z)-o.d/2);
+    return dx*dx+dz*dz<radius*radius||radius===0&&Math.abs(x-o.x)<o.w/2&&Math.abs(z-o.z)<o.d/2;
+  });
 }
 class LayoutPlacementError extends Error {}
 export function createLayout(level,seed) {
@@ -137,7 +147,7 @@ function generateLayout(level, seed,scale) {
       let p=null;
       for(const scale of [1,.8,.65]){const size=key==='villages'?9:key==='camps'?5.5:key==='mountains'?7:6;p=place(size*scale,(key==='mountains'?size*.8:size)*scale);if(p)break;}
       if(!p)throw new LayoutPlacementError(`Map too crowded for ${key} in ${level.id}`);
-      if(key==='mountains'){p.height=3.5+random()*3;layout.mountains.push(p);layout.obstacles.push({...p,type:'mountain'});}
+      if(key==='mountains'){p.height=3.5+random()*3;layout.mountains.push(p);layout.obstacles.push(...mountainObstacles(p,level.biome?.id));}
       if(key==='lakes')layout.lakes.push(p);
       if(key==='villages'){
         p.houses=[{x:p.x-p.w*.24,z:p.z-p.d*.2,w:2.6,d:2.6,color:'#e4bd88'},{x:p.x+p.w*.24,z:p.z+p.d*.2,w:2.6,d:2.6,color:'#d6bfa4'}];
@@ -182,12 +192,14 @@ function generateLayout(level, seed,scale) {
   const finalRoads=[];
   for(const goal of [layout.dock,...layout.workshops.map(w=>({x:w.approach[0],z:w.approach[1]}))]){
     if(Math.hypot(goal.x-layout.spawn.x,goal.z-layout.spawn.z)<.01)continue;
-    const path=findPath(layout.spawn,goal,(x,z)=>blockedAt(layout,x,z),layout.bounds,(a,b)=>canWalkSegment(layout,a,b),layout.ladders);
+    const path=findPath(layout.spawn,goal,(x,z)=>blockedAt(layout,x,z,playerRadius),layout.bounds,(a,b)=>canWalkSegment(layout,a,b),layout.ladders);
     if(!path.length||Math.hypot(path.at(-1).x-goal.x,path.at(-1).z-goal.z)>.15)throw new LayoutPlacementError(`No safe elevation route in ${level.id}`);
     const points=[layout.spawn,...path];for(let i=1;i<points.length;i++)if(!points[i].ladder)finalRoads.push({a:points[i-1],b:points[i]});
   }
   layout.roads=layout.roads.filter(r=>canWalkSegment(layout,r.a,r.b));
   layout.roads.push(...finalRoads);
+  layout.fences=coastalFences(layout);
+  layout.obstacles.push(...layout.fences.map(f=>({x:f.x+(f.axis==='x'?f.length/2:0),z:f.z+(f.axis==='z'?f.length/2:0),w:f.axis==='x'?f.length+.16:.16,d:f.axis==='z'?f.length+.16:.16,type:'fence'})));
   layout.lamps=streetLamps(layout);
   layout.obstacles.push(...layout.lamps.map(l=>({x:l.x,z:l.z,w:.35,d:.35,type:'street-lamp'})));
   obstacleIndices.delete(layout);

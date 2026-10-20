@@ -1,11 +1,11 @@
 import { randomSource } from './random.js';
 import { blockedAt } from './level-layout.js';
 import { clearSegment } from './navigation.js';
-import { canWalkSegment } from './terrain.js';
+import { canWalkSegment,playerRadius } from './terrain.js';
 
 // Every side activity branches from a verified teaching route. It never gates sailing.
 export function placeExploration(layout){
-  const random=randomSource(layout.seed^0xBB67AE85),safe=(a,b)=>clearSegment(a,b,(x,z)=>blockedAt(layout,x,z,.36),(a,b)=>canWalkSegment(layout,a,b));
+  const random=randomSource(layout.seed^0xBB67AE85),safe=(a,b)=>clearSegment(a,b,(x,z)=>blockedAt(layout,x,z,playerRadius),(a,b)=>canWalkSegment(layout,a,b));
   const anchors=[layout.spawn,...layout.roads.flatMap(r=>[r.a,r.b])],spots=[];
   for(let tries=0;tries<180&&spots.length<8;tries++){
     const a=anchors[Math.floor(random()*anchors.length)],angle=random()*Math.PI*2,r=1+random()*2.5;

@@ -4,7 +4,7 @@ import {build} from 'esbuild';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {blockedAt} from '../src/level-layout.js';
-import {canWalkSegment} from '../src/terrain.js';
+import {canWalkSegment,playerRadius,terrainTopOffset} from '../src/terrain.js';
 
 // Actual input, planning and player loop, with no browser, GPU or map generator.
 test('actual movement rounds trees diagonally and exploration searches nearby reachable shards',async()=>{
@@ -18,9 +18,9 @@ test('actual movement rounds trees diagonally and exploration searches nearby re
     hasPointerCapture(){return false;}setPointerCapture(){}releasePointerCapture(){}
   }
   const document=new Node(),window=new Node(),container=new Node();document.createElement=()=>new Node();document.activeElement=null;container.clientWidth=1000;container.clientHeight=700;container.clientLeft=container.clientTop=0;
-  let clock=0,nextId=0,queue=new Map(),target=null,ratio=1,width=1000,height=700;
+  let clock=0,nextId=0,queue=new Map(),target=null,ratio=1,width=1000,height=700,renderer;
   class Renderer{
-    constructor(){this.domElement=new Node();this.shadowMap={enabled:false,autoUpdate:false,needsUpdate:false};this.info={render:{calls:0,triangles:0},memory:{geometries:0},reset(){}};this.autoClear=true;}
+    constructor(){renderer=this;this.domElement=new Node();this.shadowMap={enabled:false,autoUpdate:false,needsUpdate:false};this.info={render:{calls:0,triangles:0},memory:{geometries:0},reset(){}};this.autoClear=true;}
     getContext(){return {getExtension(){return null;}};}
     setPixelRatio(value){ratio=value;}getPixelRatio(){return ratio;}setDrawingBufferSize(w,h,r){width=w;height=h;ratio=r;}
     getDrawingBufferSize(out){return out.set(width*ratio,height*ratio);}getRenderTarget(){return target;}setRenderTarget(value){target=value;}
@@ -34,6 +34,7 @@ test('actual movement rounds trees diagonally and exploration searches nearby re
   for(const [key,value]of Object.entries(overrides))Object.defineProperty(globalThis,key,{value,writable:true,configurable:true});
   function step(ms=1000/30){const callbacks=[...queue.values()];queue.clear();clock+=ms;for(const callback of callbacks)callback(clock);}
   function key(type,key){const event=new Event(type,{cancelable:true});Object.defineProperty(event,'key',{value:key});window.dispatchEvent(event);}
+  function click(x,y,z){const p=world.screenPoint(x,y,z),event=new Event('pointerdown',{cancelable:true});for(const [key,value]of Object.entries({clientX:p.x,clientY:p.y,button:0,pointerId:1}))Object.defineProperty(event,key,{value});renderer.domElement.dispatchEvent(event);}
   function layout(spawn){return {seed:1,width:16,depth:16,shoreline:{radii:Array(32).fill(1)},bounds:{minX:-7,maxX:7,minZ:-7,maxZ:7},shoreX:8,dock:{x:6,z:0},boat:{x:10,z:0},spawn,level:{id:'fixed-tree',map:{npcLimit:0},npc:{radius:2,speed:.65}},workshops:[],npcSpawns:{},obstacles:[{x:0,z:0,w:.5,d:.5,type:'tree'}],roads:[],ladders:[],terraces:[],trees:[{x:0,z:0,scale:1}],mountains:[],villages:[],camps:[],reefs:[],exploration:[],wildlife:[]};}
   let world;const notices=[],explored=[];
   try{
@@ -47,7 +48,7 @@ test('actual movement rounds trees diagonally and exploration searches nearby re
       world.walkTo(goal);assert.ok(world.getDebugSnapshot().routeRemaining>0);let previous=world.getDebugSnapshot().position,diagonal=0;
       for(let frame=0;frame<160&&world.getDebugSnapshot().routeRemaining;frame++){
         step([1000/60,1000/30,100][frame%3]);const next=world.getDebugSnapshot().position;
-        assert.equal(blockedAt(current,next.x,next.z),false,'player never enters the tree collision box');assert.ok(canWalkSegment(current,previous,next));
+        assert.equal(blockedAt(current,next.x,next.z,playerRadius),false,'the whole player stays outside the tree collision box');assert.ok(canWalkSegment(current,previous,next));
         if(Math.abs(next.x-previous.x)>1e-5&&Math.abs(next.z-previous.z)>1e-5)diagonal++;previous=next;
       }
       const after=world.getDebugSnapshot();assert.equal(after.routeRemaining,0,'the route must finish without stalling at a turn');assert.ok(Math.hypot(after.position.x-goal.x,after.position.z-goal.z)<1e-6);assert.ok(diagonal>5,'automatic movement uses diagonal segments');
@@ -64,6 +65,25 @@ test('actual movement rounds trees diagonally and exploration searches nearby re
     assert.equal(world.exploreNearest('shard'),true);assert.deepEqual(world.getDebugSnapshot().nextPoint,{x:-3,z:0},'a blocked nearby shard falls back to the next candidate');assert.deepEqual(notices,[],'rejected candidates do not emit intermediate failure notices');
     assert.equal(world.exploreNearest('shard',['blocked','reachable']),false,'an empty candidate set starts no new route');
     assert.equal(world.exploreNearest('shard',['reachable']),false);assert.equal(notices.length,1,'all unreachable candidates produce one failure notice');
+    // Actual pointer events must use the drawn high floor, not a y=0 plane.
+    const voxel={...layout({x:0,z:0}),width:13,depth:13,shoreline:{radii:Array(96).fill(.9)},bounds:{minX:-6,maxX:6,minZ:-6,maxZ:6},terrain:{baseLayers:0,layerHeight:.75,coastLayers:Array(12).fill(0)},terrainReady:true,trees:[],obstacles:[],terraces:[{x:0,z:0,r:1.2,ramp:.01,height:4}],fences:[]};
+    world.loadLevel(voxel);for(let i=0;i<4;i++)step();notices.length=0;
+    click(.2,4+terrainTopOffset,.2);assert.equal(notices.length,0);assert.ok(world.getDebugSnapshot().routeRemaining);
+    for(let i=0;i<30&&world.getDebugSnapshot().routeRemaining;i++)step();
+    const high=world.getDebugSnapshot();assert.ok(Math.hypot(high.position.x-.2,high.position.z-.2)<1e-5,'click ends at the exact raised surface coordinates');assert.ok(Math.abs(high.position.y-4.25)<.1,'feet follow the raised floor with the normal walking bob');
+    click(12,0,12);assert.equal(world.getDebugSnapshot().routeRemaining,0);assert.match(notices.at(-1),/岛上的地面/);
+    click(0,2,1.3);assert.equal(world.getDebugSnapshot().routeRemaining,0);assert.match(notices.at(-1),/崖壁/);
+    // Keyboard motion cannot bury shoulders in the high voxel, even when only
+    // the centre would fit. A route around the same corner must remain usable.
+    const cliff={...voxel,spawn:{x:2.2,z:0}};world.loadLevel(cliff);for(let i=0;i<4;i++)step();key('keydown','a');for(let i=0;i<24;i++)step();key('keyup','a');
+    const stopped=world.getDebugSnapshot();assert.ok(stopped.position.x>=1.3+playerRadius,'body stops before the cliff');assert.equal(blockedAt(cliff,stopped.position.x,stopped.position.z,playerRadius),false);
+    world.walkTo({x:-2.2,z:0});assert.ok(world.getDebugSnapshot().routeRemaining);
+    for(let i=0;i<200&&world.getDebugSnapshot().routeRemaining;i++){step();const p=world.getDebugSnapshot().position;assert.equal(blockedAt(cliff,p.x,p.z,playerRadius),false);}
+    assert.equal(world.getDebugSnapshot().routeRemaining,0);assert.ok(Math.abs(world.getDebugSnapshot().position.x+2.2)<1e-6);
+    const coast={...voxel,spawn:{x:4.1,z:3.1},terraces:[]};world.loadLevel(coast);for(let i=0;i<4;i++)step();notices.length=0;
+    click(4.55,terrainTopOffset,3.25);assert.ok(world.getDebugSnapshot().routeRemaining,'safe visible coastal floor has no inland air wall');
+    for(let i=0;i<30&&world.getDebugSnapshot().routeRemaining;i++)step();assert.ok(Math.hypot(world.getDebugSnapshot().position.x-4.55,world.getDebugSnapshot().position.z-3.25)<1e-5);
+    key('keydown','d');for(let i=0;i<20;i++)step();key('keyup','d');const edge=world.getDebugSnapshot().position;assert.equal(blockedAt(coast,edge.x,edge.z,playerRadius),false);assert.ok(edge.x<=5.2-playerRadius,'body remains on the rendered tile');assert.deepEqual(notices,[]);
     // Slow presentation must never change the default user's chosen visuals.
     // A renderer stub verifies the real scheduling path, not actual GPU FPS.
     world.setQuality({preset:'auto',resolution:'1.5',maxFps:30});

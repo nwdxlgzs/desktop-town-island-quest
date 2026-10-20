@@ -2,8 +2,8 @@ import { onLand } from './shoreline.js';
 import { elevationAt, terrainTileSize, waterAt } from './terrain.js';
 import { nearRoad } from './level-layout.js';
 
-// Short level runs on the existing voxel coast. All rail samples are inside
-// the player's shore clearance: decoration never takes away a walkable route.
+// Short level runs on the existing voxel coast, away from verified routes.
+// The generator registers the same rails as solid obstacles.
 // The result is baked into static scenery, with no fence objects to animate.
 export function coastalFences(layout){
   const size=terrainTileSize,half=size/2,cells=new Map(),edges=new Map();

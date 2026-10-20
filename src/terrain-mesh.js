@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { elevationAt,terrainTileSize,waterAt } from './terrain.js';
+import { terrainTileSize,terrainCellAt } from './terrain.js';
 import { onLand } from './shoreline.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -70,9 +70,9 @@ export function buildTerrainMesh(layout,palette){
   const cols=Math.ceil(layout.width/size),rows=Math.ceil(layout.depth/size),key=(x,z)=>z*cols+x;
   for(let ix=0;ix<cols;ix++)for(let iz=0;iz<rows;iz++){
     const x=-layout.width/2+size*(ix+.5),z=-layout.depth/2+size*(iz+.5);
-    if(x>layout.width/2||z>layout.depth/2||!onLand(layout,x,z))continue;
-    const wet=waterAt(layout,x,z),elevation=wet?0:elevationAt(layout,x,z),edge=!onLand(layout,x,z,1.5);
-    cells.set(key(ix,iz),{x,z,ix,iz,elevation,wet,top:elevation+(wet?-.075:.075),color:wet?palette.water:edge?palette.sand:Math.sin(x*.16)+Math.cos(z*.22)>.6?palette.groundAlt:palette.ground});
+    const cell=terrainCellAt(layout,x,z);if(!cell)continue;
+    const {wet}=cell,edge=!onLand(layout,x,z,1.5);
+    cells.set(key(ix,iz),{...cell,color:wet?palette.water:edge?palette.sand:Math.sin(x*.16)+Math.cos(z*.22)>.6?palette.groundAlt:palette.ground});
   }
   function quad(a,b,c,d,color,face){tint.set(color);for(const v of [a,b,c,a,c,d]){positions.push(...v);colors.push(tint.r,tint.g,tint.b);faces.push(face);}}
   for(const cell of cells.values()){

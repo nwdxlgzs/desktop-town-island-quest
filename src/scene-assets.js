@@ -16,6 +16,8 @@ import { coastalFences } from './fence-layout.js';
 import { exposedBoxGeometry } from './box-surfaces.js';
 import { streetLamps } from './street-lamps.js';
 import { workshopArchitecture } from './workshop-designs.js';
+import { createGroundPicker } from './ground-picker.js';
+import { mountainParts } from './mountain-shape.js';
 
 export function createPerson(cube, material, color, hat='#e9a958', npc=false, surface=exposedBoxGeometry) {
   const g=new THREE.Group();
@@ -97,7 +99,7 @@ export function buildIsland(layout, cube, material) {
   const sign=(text,bg,fg='#ffffff',w=3.8)=>signs.sign(text,bg,fg,w);
   const {width:w,depth:d}=layout,rand=randomSource(layout.seed+19);
   root.add(buildTerrainMesh(layout,p));
-  const fences=coastalFences(layout);fences.forEach(fence);buildElevation=0;
+  const fences=layout.fences||coastalFences(layout);fences.forEach(fence);buildElevation=0;
   const lamps=layout.lamps||streetLamps(layout),night=['night','predawn'].includes(layout.level.environment?.id);
   for(const l of lamps){
     buildElevation=l.y;
@@ -190,11 +192,8 @@ export function buildIsland(layout, cube, material) {
   }
   buildElevation=0;
   for(const mountain of layout.mountains)occlude(()=>{
-    const {x,z,w,d,height:h}=mountain;buildElevation=mountain.baseHeight??elevationAt(layout,x,z);
-    for(let tier=0;tier<4;tier++){const scale=1-tier*.21;box(x+(tier%2)*.25,tier*h*.23+h*.13,z-tier*.15,w*scale,h*.27,d*scale,p.rock[tier]);}
-    box(x-w*.32,.55,z+d*.34,w*.22,1.1,d*.3,p.rock[1]);
-    if(biome?.id==='cave'){box(x,.9,z+d*.51,w*.45,1.8,.08,'#415569');for(let i=0;i<3;i++)box(x-w*.22+i*w*.22,1.2+i*.2,z+d*.53,.35,.9,.4,p.leaf[i]);}
-    if(biome?.id==='inferno')box(x,h*.92,z-.45,w*.3,.12,d*.25,p.accent);
+    buildElevation=mountain.baseHeight??elevationAt(layout,mountain.x,mountain.z);
+    for(const part of mountainParts(mountain,biome?.id,p))box(part.x,part.y,part.z,part.w,part.h,part.d,part.color);
   });
   function resident(x,z,color,activity,key){const safe=layout.npcSpawns[key];x=safe.x;z=safe.z;const object=person(color,'#dec39b',true);object.position.set(x,.25+elevationAt(layout,x,z),z);root.add(object);npcs.push({object,home:{x,z},activity,timer:1+npcs.length*.17,route:[],phase:npcs.length,random:randomSource(layout.seed+991+npcs.length*71)});}
   for(const village of layout.villages){
@@ -275,7 +274,8 @@ export function buildIsland(layout, cube, material) {
   const allProps=new Set([...reefObjects.map(r=>r.object),...discoveries.map(d=>d.object),...beacons.map(b=>b.object),...animated.map(a=>a.object),...root.children.filter(o=>o.isMesh&&!o.isInstancedMesh&&o.geometry.type==='CylinderGeometry')]);
   const propsBatch=batchIslandProps([...dynamicProps],[...allProps].filter(o=>!dynamicProps.has(o)),root);
   if(propsBatch.staticViewList)staticLists.push(propsBatch.staticViewList);
-  for(const mesh of root.children)if(mesh.userData.terrain||mesh.userData.groundSurface)staticLists.push(spatialDrawList(mesh));
+  const groundSurfaces=root.children.filter(mesh=>mesh.userData.terrain||mesh.userData.groundSurface),groundPicker=createGroundPicker(root,groundSurfaces);
+  for(const mesh of groundSurfaces)staticLists.push(spatialDrawList(mesh));
   if(sceneryBatch.viewList)staticLists.push(sceneryBatch.viewList);
   const view=createIslandView(root,{staticLists,overlayLists:[signBatch.viewList].filter(Boolean),npcs,props:propsBatch.dynamicSources||[],dynamicLists:[residentBatch.viewList,propsBatch.viewList].filter(Boolean)});
   // The renderer can skip the complete rig subtree. Direct hit-target rays and
@@ -287,5 +287,5 @@ export function buildIsland(layout, cube, material) {
   installVoxelLighting(root);
   freezeStaticMeshes(root);animated.forEach(a=>a.object.matrixAutoUpdate=true);discoveries.forEach(d=>d.object.matrixAutoUpdate=true);
   npcs.forEach(n=>n.object.traverse(o=>{if(o.isGroup)o.matrixAutoUpdate=true;}));
-  return {root,layout,fences,lamps,npcs,animated,beacons,hitTargets,occluders,reefObjects,discoveries,groundReceivers,dynamicDiscoveries:discoveries.filter(d=>d.type==='animal'||d.type==='shard'),wildlife,sceneryBatch,residentBatch,signBatch,propsBatch,bakedShadows,view};
+  return {root,layout,fences,lamps,npcs,animated,beacons,hitTargets,groundPicker,occluders,reefObjects,discoveries,groundReceivers,dynamicDiscoveries:discoveries.filter(d=>d.type==='animal'||d.type==='shard'),wildlife,sceneryBatch,residentBatch,signBatch,propsBatch,bakedShadows,view};
 }

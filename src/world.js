@@ -5,7 +5,7 @@ import { blockedAt, onLand } from './level-layout.js';
 import { buildIsland, createPerson } from './scene-assets.js';
 import { workshopAt } from './interactions.js';
 import { createVoyage, sampleVoyage, boatHeight, hullRadius,voyageReefs } from './voyage.js';
-import { elevationAt, walkingHeightAt,ladderAt,canWalkSegment } from './terrain.js';
+import { elevationAt, walkingHeightAt,ladderAt,canWalkSegment,playerRadius } from './terrain.js';
 import { createMotion,startJump,tickMotion,visualJump,walkSpeed,runSpeed } from './motion.js';
 import { ladderFrame,createLadderClimb,tickLadderClimb } from './ladder-motion.js';
 import { createQualityController } from './quality.js';
@@ -106,7 +106,7 @@ export function createWorld(container,{layout,onInteract,onBoard,onReady,onError
   const groundHeight=(island,x,z)=>walkingHeightAt(island.layout,x,z);
   scene.add(active.root);player.position.set(layout.spawn.x,.25,layout.spawn.z);boat.position.set(layout.boat.x,boatHeight,layout.boat.z);boat.rotation.y=-Math.PI/2;
   player.position.y=.25+groundHeight(active,layout.spawn.x,layout.spawn.z);
-  const keys=new Set(),raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),ground=new THREE.Plane(new THREE.Vector3(0,1,0),-.25),cameraTarget=new THREE.Vector3(),projected=new THREE.Vector3();
+  const keys=new Set(),raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),cameraTarget=new THREE.Vector3(),projected=new THREE.Vector3();
   // Hit volumes use their source object's layer (the boat is dynamic). The
   // explicit target list, rather than render layers, limits interaction rays.
   raycaster.layers.enableAll();
@@ -125,7 +125,7 @@ export function createWorld(container,{layout,onInteract,onBoard,onReady,onError
     return changed;
   }
   const boatMarker=container.querySelector('#boat-marker');
-  const canMove=(a,b,radius=.28)=>clearSegment(a,b,(x,z)=>blockedAt(active.layout,x,z,radius),(a,b)=>canWalkSegment(active.layout,a,b));
+  const canMove=(a,b,radius=playerRadius)=>clearSegment(a,b,(x,z)=>blockedAt(active.layout,x,z,radius),(a,b)=>canWalkSegment(active.layout,a,b));
   let routeGoal=null,playerClimb=null,queuedBoarding=false,stalled=0,replans=0,lastShadow=0,lastShadowFrame=0,lastHUD=0,lastActors=0,nextRender=0;
   const gpuInfo=renderer.getContext().getExtension('WEBGL_debug_renderer_info'),gpuName=gpuInfo?renderer.getContext().getParameter(gpuInfo.UNMASKED_RENDERER_WEBGL):'';
   const quality=createQualityController(qualitySettings,applyQuality,{cores:navigator.hardwareConcurrency,memory:navigator.deviceMemory,softwareGPU:/swiftshader|llvmpipe|software/i.test(gpuName)});let qualityProfile=quality.profile;
@@ -203,7 +203,7 @@ export function createWorld(container,{layout,onInteract,onBoard,onReady,onError
     const text=playerClimb?'正在沿崖壁垂直攀爬':atDock?'按 E 乘船 · 每工坊至少 1 题且全岛达到 60%':n?n.wave&&n.workshop?'再按 E 进入工坊 · 点击长台也可开始':'按 E 与居民招手':d?`按 E · ${d.type==='animal'?'观察':''}${d.name}`:l?'按 E 爬梯子 · 也可以朝梯口移动':s?`按 E / 点击长台 · ${s.name}`:'Shift 跑步 · 空格跳跃 · E 互动';
     if(interactionHint&&text!==hintText){interactionHint.textContent=text;interactionHint.classList.toggle('available',!!s||!!d||!!n||!!l||atDock);hintText=text;}}
   let plannerIsland=null,planner=null;
-  function pathTo(point,action,retry=false,notify=true){if(travel||playerClimb)return false;wake();keys.clear();manualPan=false;panX=panZ=0;const offset=active.root.position;if(plannerIsland!==active){const island=active;plannerIsland=island;planner=createNavigator((x,z)=>blockedAt(island.layout,x,z),island.layout.bounds,(a,b)=>canWalkSegment(island.layout,a,b),island.layout.ladders);}route=planner.findPath(localPlayer(),point).map(p=>Object.assign(new THREE.Vector3(p.x+offset.x,.25,p.z+offset.z),{ladder:p.ladder,fromTop:p.fromTop,corridor:p}));
+  function pathTo(point,action,retry=false,notify=true){if(travel||playerClimb)return false;wake();keys.clear();manualPan=false;panX=panZ=0;const offset=active.root.position;if(plannerIsland!==active){const island=active;plannerIsland=island;planner=createNavigator((x,z)=>blockedAt(island.layout,x,z,playerRadius),island.layout.bounds,(a,b)=>canWalkSegment(island.layout,a,b),island.layout.ladders);}route=planner.findPath(localPlayer(),point).map(p=>Object.assign(new THREE.Vector3(p.x+offset.x,.25,p.z+offset.z),{ladder:p.ladder,fromTop:p.fromTop,corridor:p}));
     destination.visible=false;if(!route.length){target=null;routeGoal=null;if(notify)onNotice('这里暂时走不到，试试沿小路绕行。');return false;}
     motion.autoRun=route.reduce((n,p,i)=>{const previous=route[i-1]||player.position;return n+Math.hypot(p.x-previous.x,p.z-previous.z);},0)>13;target=action;routeGoal={x:point.x,z:point.z};stalled=0;if(!retry)replans=0;const end=route.at(-1);destination.position.set(end.x,.29+groundHeight(active,end.x-offset.x,end.z-offset.z),end.z);destination.visible=true;return true;}
   function explore(id,quiet=false){if(playerClimb||travel)return false;const item=active.discoveries.find(d=>d.id===id&&d.object.visible);if(!item)return false;const point={x:item.object.position.x,z:item.object.position.z};
@@ -219,16 +219,16 @@ export function createWorld(container,{layout,onInteract,onBoard,onReady,onError
   function goToBoat(){if(playerClimb){queuedBoarding=true;onNotice('到达梯口后，继续前往码头。');return true;}if(Math.hypot(localPlayer().x-active.layout.dock.x,localPlayer().z-active.layout.dock.z)<1.5){stopWalking();onBoard();return true;}return pathTo(active.layout.dock,'boat');}
   function interact(){if(travel||playerClimb||isPaused())return;const p=localPlayer();if(Math.hypot(p.x-active.layout.dock.x,p.z-active.layout.dock.z)<1.5){stopWalking();onBoard();return;}const n=nearbyNPC(),d=nearbyDiscovery(),s=nearbyWorkshop(),l=nearbyLadder();if(n){if(n.wave>0&&n.workshop){enterWorkshop(n.workshop);return;}stopWalking();motion.wave=1.8;n.wave=1.8;wake();onNotice(n.workshop?'居民向你招手！再按 E 可以开始工坊。':'居民开心地向你挥了挥手。');return;}if(d){stopWalking();onExplore(d);return;}if(l){useLadder(l.id);return;}if(s){enterWorkshop(s.id);}}
   function pointerRay(e){const rect=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);}
-  function screenToWorld(e){pointerRay(e);const point=new THREE.Vector3();ground.constant=-.25;raycaster.ray.intersectPlane(ground,point);for(let i=0;i<4;i++){const height=groundHeight(active,point.x-active.root.position.x,point.z);ground.constant=-.25-height;raycaster.ray.intersectPlane(ground,point);}return point;}
+  function screenToWorld(e){pointerRay(e);return active.groundPicker.pick(raycaster.ray);}
   const pickTargets=[],pickHits=[];
-  function hit(e){
+  function hit(e,surface=null){
     pointerRay(e);pickTargets.length=0;pickHits.length=0;
     for(const o of active.hitTargets){let parent=o;while(parent&&parent!==active.root&&parent.userData.inView!==false)parent=parent.parent;if(parent===active.root)pickTargets.push(o);}
     if(boat.visible)pickTargets.push(boatHit);
-    return raycaster.intersectObjects(pickTargets,false,pickHits)[0]?.object;
+    const first=raycaster.intersectObjects(pickTargets,false,pickHits)[0];return first&&(!surface||first.distance<=surface.distance+.02)?first.object:null;
   }
   function endOrbit(id=orbit.pointer,immediate=false){const pointerId=orbit.pointer;if(!orbit.end(id,immediate))return;renderer.domElement.style.cursor='default';if(pointerId!==null&&renderer.domElement.hasPointerCapture(pointerId))renderer.domElement.releasePointerCapture(pointerId);lastOcclusion=-Infinity;updateCamera();wake();}
-  function onDown(e){if(e.button===2){e.preventDefault();e.stopPropagation();if(!isPaused()&&!travel&&orbit.start(e.pointerId,e.clientX)){drag=null;renderer.domElement.setPointerCapture(e.pointerId);renderer.domElement.style.cursor='grabbing';wake();}return;}if(orbit.active||isPaused()||travel||playerClimb)return;if(e.button===1){e.preventDefault();drag={x:e.clientX,y:e.clientY,panX,panZ};renderer.domElement.setPointerCapture(e.pointerId);return;}if(e.button!==0)return;const object=hit(e);if(object===boatHit){goToBoat();return;}if(object?.userData.ladder){useLadder(object.userData.ladder);return;}if(object?.userData.discovery){explore(object.userData.discovery);return;}if(object?.userData.station){goToStation(object.userData.station);return;}const point=screenToWorld(e),b=active.layout.bounds;point.x=THREE.MathUtils.clamp(point.x-active.root.position.x,b.minX,b.maxX);point.z=THREE.MathUtils.clamp(point.z,b.minZ,b.maxZ);pathTo(point,null);}
+  function onDown(e){if(e.button===2){e.preventDefault();e.stopPropagation();if(!isPaused()&&!travel&&orbit.start(e.pointerId,e.clientX)){drag=null;renderer.domElement.setPointerCapture(e.pointerId);renderer.domElement.style.cursor='grabbing';wake();}return;}if(orbit.active||isPaused()||travel||playerClimb)return;if(e.button===1){e.preventDefault();drag={x:e.clientX,y:e.clientY,panX,panZ};renderer.domElement.setPointerCapture(e.pointerId);return;}if(e.button!==0)return;const surface=screenToWorld(e),object=hit(e,surface);if(object===boatHit){goToBoat();return;}if(object?.userData.ladder){useLadder(object.userData.ladder);return;}if(object?.userData.discovery){explore(object.userData.discovery);return;}if(object?.userData.station){goToStation(object.userData.station);return;}if(!surface||!surface.walkable){stopWalking();onNotice(surface?'这里是崖壁，请点击平台上方的地面，或从梯子攀爬。':'请点击岛上的地面，水面和岛外不能行走。');return;}const point=surface.point;pathTo({x:point.x-active.root.position.x,z:point.z-active.root.position.z},null);}
   function onMove(e){if(orbit.dragging){e.preventDefault();e.stopPropagation();if(!(e.buttons&2)){endOrbit(e.pointerId);return;}if(orbit.move(e.pointerId,e.clientX,viewport.width)){updateCamera();wake();}return;}if(drag){manualPan=true;panX=THREE.MathUtils.clamp(drag.panX-(e.clientX-drag.x)*.035,-active.layout.width/2,active.layout.width/2);panZ=THREE.MathUtils.clamp(drag.panZ-(e.clientY-drag.y)*.045,-active.layout.depth/2,active.layout.depth/2);updateCamera();wake();return;}if(!orbit.active&&!travel&&performance.now()-lastHover>120){lastHover=performance.now();renderer.domElement.style.cursor=hit(e)?'pointer':'default';}}
   const on=(el,name,fn,options={})=>el.addEventListener(name,fn,{signal:controller.signal,...options});
   on(renderer.domElement,'pointerdown',onDown,{capture:true});on(renderer.domElement,'pointermove',onMove,{capture:true});
@@ -384,7 +384,7 @@ export function createWorld(container,{layout,onInteract,onBoard,onReady,onError
     }
     return changing;
   }
-  function disposeIsland(island){for(const [o,owner]of fadingOccluders)if(owner===island)fadingOccluders.delete(o);if(plannerIsland===island){plannerIsland=planner=null;}if(shadowIsland===island){shadowIsland=null;shadowSources=[];shadowMotion.reset();shadowDamage.reset();}scene.remove(island.root);island.residentBatch.dispose?.();island.propsBatch.dispose?.();const geometries=new Set(),owned=new Set(),textures=new Set(),shared=new Set(materials.values());island.root.traverse(mesh=>{if(!mesh.isMesh)return;if(mesh.geometry!==cube)geometries.add(mesh.geometry);if(mesh.isInstancedMesh)mesh.dispose();for(const m of [mesh.material].flat()){if(!shared.has(m)){owned.add(m);if(m.map)textures.add(m.map);}}});geometries.forEach(g=>g.dispose());owned.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());}
+  function disposeIsland(island){for(const [o,owner]of fadingOccluders)if(owner===island)fadingOccluders.delete(o);if(plannerIsland===island){plannerIsland=planner=null;}if(shadowIsland===island){shadowIsland=null;shadowSources=[];shadowMotion.reset();shadowDamage.reset();}scene.remove(island.root);island.groundPicker.dispose();island.residentBatch.dispose?.();island.propsBatch.dispose?.();const geometries=new Set(),owned=new Set(),textures=new Set(),shared=new Set(materials.values());island.root.traverse(mesh=>{if(!mesh.isMesh)return;if(mesh.geometry!==cube)geometries.add(mesh.geometry);if(mesh.isInstancedMesh)mesh.dispose();for(const m of [mesh.material].flat()){if(!shared.has(m)){owned.add(m);if(m.map)textures.add(m.map);}}});geometries.forEach(g=>g.dispose());owned.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());}
   function travelTo(nextLayout,done){if(!passage(4)||travel||playerClimb)return false;endOrbit(undefined,true);keys.clear();route=[];target=null;drag=null;destination.visible=false;panX=panZ=0;zoom=1;manualPan=false;overview=false;container.classList.remove('overview');
     motion.jump=motion.wave=0;playerClimb=null;outline.set(false);quality.resetSampling();
     const voyage=createVoyage(active.layout,nextLayout);
