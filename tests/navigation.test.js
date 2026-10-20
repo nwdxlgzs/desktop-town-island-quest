@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {levels,configureJourney} from '../src/curriculum.js';
+import {levels,configureJourney,journeyForSeed} from '../src/curriculum.js';
 import {createLayout,blockedAt,onLand} from '../src/level-layout.js';
-import {findPath,clearSegment,createNavigator} from '../src/navigation.js';
+import {findPath,clearSegment,createNavigator,terrainNavigationGrid} from '../src/navigation.js';
 import {elevationAt,walkingHeightAt,canWalkSegment,maxStepHeight,playerRadius} from '../src/terrain.js';
 import {createLadderClimb,tickLadderClimb,ladderFrame} from '../src/ladder-motion.js';
 
@@ -46,6 +46,18 @@ test('vertical ladder links retain their landings without making cliffs walkable
     assert.ok(vertical>20);
   }
   assert.equal(walk(low,high,[{...ladder,bottom:{x:0,z:0,y:0}}]).length,0,'invalid lower landing cannot connect through cliff');
+});
+
+test('reported seed 3763093038 island 3 connects the two-mountain ledge and both ladder directions',()=>{
+  const seed=3763093038,level=journeyForSeed(seed)[2],layout=createLayout(level,seed);assert.equal(level.name,'山林探索岛');assert.equal(layout.mountains.length,2);
+  const blocked=(x,z)=>blockedAt(layout,x,z,playerRadius),traverse=(a,b)=>canWalkSegment(layout,a,b),ledge={x:4.25,z:12.25};
+  assert.deepEqual(findPath(layout.spawn,ledge,blocked,layout.bounds,traverse,layout.ladders),[],'reproduce the reported coarse-grid failure on the unchanged seeded map');
+  const nav=createNavigator(blocked,layout.bounds,traverse,layout.ladders,terrainNavigationGrid(layout));
+  for(const [from,to]of [[layout.spawn,ledge],[ledge,layout.spawn],[layout.spawn,layout.ladders[0].bottom],[layout.ladders[0].bottom,layout.spawn]]){
+    const path=nav.findPath(from,to);assert.ok(path.length);assert.ok(path.some(p=>p.ladder),'the route uses real cliff ladders');let previous=from;
+    for(const p of path){if(p.ladder){const l=layout.ladders.find(l=>l.id===p.ladder);assert.ok(l);const entry=p.fromTop?l.top:l.bottom,exit=p.fromTop?l.bottom:l.top;assert.ok(Math.hypot(previous.x-entry.x,previous.z-entry.z)<1e-6);assert.ok(Math.hypot(p.x-exit.x,p.z-exit.z)<1e-6);}else assert.ok(clearSegment(previous,p,blocked,traverse),'every walk segment retains full body clearance');previous=p;}
+    assert.ok(Math.hypot(path.at(-1).x-to.x,path.at(-1).z-to.z)<1e-6);
+  }
 });
 
 test('exact corner waypoints remain traversable at runtime and unreachable endpoints fail explicitly',()=>{

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createNavigator, clearSegment } from './navigation.js';
+import { createNavigator, clearSegment,terrainNavigationGrid } from './navigation.js';
 import { createOcean } from './ocean.js';
 import { blockedAt, onLand } from './level-layout.js';
 import { buildIsland, createPerson } from './scene-assets.js';
@@ -203,7 +203,7 @@ export function createWorld(container,{layout,onInteract,onBoard,onReady,onError
     const text=playerClimb?'正在沿崖壁垂直攀爬':atDock?'按 E 乘船 · 每工坊至少 1 题且全岛达到 60%':n?n.wave&&n.workshop?'再按 E 进入工坊 · 点击长台也可开始':'按 E 与居民招手':d?`按 E · ${d.type==='animal'?'观察':''}${d.name}`:l?'按 E 爬梯子 · 也可以朝梯口移动':s?`按 E / 点击长台 · ${s.name}`:'Shift 跑步 · 空格跳跃 · E 互动';
     if(interactionHint&&text!==hintText){interactionHint.textContent=text;interactionHint.classList.toggle('available',!!s||!!d||!!n||!!l||atDock);hintText=text;}}
   let plannerIsland=null,planner=null;
-  function pathTo(point,action,retry=false,notify=true){if(travel||playerClimb)return false;wake();keys.clear();manualPan=false;panX=panZ=0;const offset=active.root.position;if(plannerIsland!==active){const island=active;plannerIsland=island;planner=createNavigator((x,z)=>blockedAt(island.layout,x,z,playerRadius),island.layout.bounds,(a,b)=>canWalkSegment(island.layout,a,b),island.layout.ladders);}route=planner.findPath(localPlayer(),point).map(p=>Object.assign(new THREE.Vector3(p.x+offset.x,.25,p.z+offset.z),{ladder:p.ladder,fromTop:p.fromTop,corridor:p}));
+  function pathTo(point,action,retry=false,notify=true){if(travel||playerClimb)return false;wake();keys.clear();manualPan=false;panX=panZ=0;const offset=active.root.position;if(plannerIsland!==active){const island=active;plannerIsland=island;planner=createNavigator((x,z)=>blockedAt(island.layout,x,z,playerRadius),island.layout.bounds,(a,b)=>canWalkSegment(island.layout,a,b),island.layout.ladders,terrainNavigationGrid(island.layout));}route=planner.findPath(localPlayer(),point).map(p=>Object.assign(new THREE.Vector3(p.x+offset.x,.25,p.z+offset.z),{ladder:p.ladder,fromTop:p.fromTop,corridor:p}));
     destination.visible=false;if(!route.length){target=null;routeGoal=null;if(notify)onNotice('这里暂时走不到，试试沿小路绕行。');return false;}
     motion.autoRun=route.reduce((n,p,i)=>{const previous=route[i-1]||player.position;return n+Math.hypot(p.x-previous.x,p.z-previous.z);},0)>13;target=action;routeGoal={x:point.x,z:point.z};stalled=0;if(!retry)replans=0;const end=route.at(-1);destination.position.set(end.x,.29+groundHeight(active,end.x-offset.x,end.z-offset.z),end.z);destination.visible=true;return true;}
   function explore(id,quiet=false){if(playerClimb||travel)return false;const item=active.discoveries.find(d=>d.id===id&&d.object.visible);if(!item)return false;const point={x:item.object.position.x,z:item.object.position.z};

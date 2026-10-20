@@ -18,6 +18,7 @@ import { createSessionFlow,useSessionStep,cancelSession,dropSessionStep } from '
 import { failedEvent,stopClass,stoppedFlag,roleAttribute,alertRole,stoppedMarkup,appSelector } from './check-strings.js';
 import { preview } from './state.js';
 import { mountTeachingLibrary } from './teaching-library.js';
+import { installKonamiCode } from './konami-code.js';
 
 const app=document.querySelector(appSelector);
 app.innerHTML=`
@@ -53,6 +54,7 @@ app.innerHTML=`
   <div class="confetti-container" id="confetti-container" aria-hidden="true"></div>`;
 
 let world=null,cleanupExercise=null,modalOpen=false,restoreFocus=null,toastTimer=null,audio=null,pendingTravel=null,explorationUI=null,creditGuard=null,clockTimer=null,gameStopped=false,taskStep=null;
+const removeKonamiCode=installKonamiCode(document,{enabled:()=>!gameStopped&&!preview,activate(){persist();location.hash='BYPASS';}});
 const music=createMusicController({enabled:state.music});
 const modal=document.querySelector('#modal'),layer=document.querySelector('#modal-layer');
 const onboarding=createOnboarding({isComplete:()=>state.onboardingVersion===1,onComplete(){state.onboardingVersion=1;persist();},isFullscreen:()=>document.body.classList.contains('immersive-mode')});
@@ -64,7 +66,7 @@ const currentLevel=()=>levels[state.currentLevel];
 function stopGame(){
   cancelSession(advance);
   if(gameStopped)return;gameStopped=true;
-  creditGuard?.disposeCreditGuard();onboarding.dispose();cleanupExercise?.();cleanupExercise=null;
+  creditGuard?.disposeCreditGuard();removeKonamiCode();onboarding.dispose();cleanupExercise?.();cleanupExercise=null;
   clearInterval(clockTimer);clearTimeout(toastTimer);music.stop();audio?.close().catch(()=>{});
   document.removeEventListener('pointerdown',primeMusic,true);document.removeEventListener('keydown',primeMusic,true);
   world?.dispose();world=null;modalOpen=false;pendingTravel=null;
@@ -174,7 +176,7 @@ document.querySelector('#explore-next').addEventListener('click',whenAnchored(()
 document.querySelector('#explore-journal').addEventListener('click',whenAnchored(()=>explorationUI.journal()));
 creditGuard=createCreditGuard({onViolation(){cancelSession(advance);stopGame();}});
 if(creditGuard.startCreditGuard()&&useSessionStep(advance(0,state.seed),0,state.seed)){
-world=createWorld(document.querySelector('#world-container'),{layout:islandLayout,passage:phase=>useSessionStep(advance(phase,state.currentLevel),phase,state.currentLevel),qualitySettings:state.quality,onQuality:p=>{const el=document.querySelector('#quality-settings');el.title=`画面设置 · ${Math.round(p.pixelRatio*100)}%${p.preset==='low'?' · 流畅低配':p.stage?' · 已自动减负':' · 自动适配'}`;el.dataset.stage=p.stage;},onNotice:toast,onExplore:item=>explorationUI.interact(item),isPaused:()=>modalOpen||onboarding.active,onInteract:openStation,onBoard:board,onReady(){document.querySelector('#world-loading')?.remove();},onError(){document.querySelector('#world-loading').innerHTML=`${icon('monitor',40)}<b>此设备暂不能渲染 3D 地图</b><p>仍可通过工作区按钮练习、完成后启航。</p>`;document.querySelector('#world-container').classList.add('fallback');},onTravelState(traveling){document.querySelector('#voyage-banner').hidden=!traveling;app.classList.toggle('is-traveling',traveling);document.querySelector('#station-focus').inert=traveling;document.querySelector('#station-list').inert=traveling;document.querySelector('#exploration-bar').inert=traveling;document.querySelector('.explore-hud').inert=traveling;}});
+world=createWorld(document.querySelector('#world-container'),{layout:islandLayout,passage:phase=>useSessionStep(advance(phase,state.currentLevel),phase,state.currentLevel),qualitySettings:state.quality,onQuality:p=>{const el=document.querySelector('#quality-settings');el.title=`画面设置 · ${Math.round(p.pixelRatio*100)}%${p.preset==='low'?' · 流畅低配':p.stage?' · 已自动减负':' · 自动适配'}`;el.dataset.stage=p.stage;},onNotice:toast,onExplore:item=>explorationUI.interact(item),isPaused:()=>modalOpen||onboarding.active,onInteract:openStation,onBoard:board,onReady(){document.querySelector('#world-loading')?.remove();},onError(){document.querySelector('#world-loading').innerHTML=`${icon('monitor',40)}<b>此设备暂不能渲染 3D 地图</b><p>仍可通过工作区按钮练习、完成后启航。</p><p>可尝试关闭浏览器后，在启动参数中加入 <code>--ignore-gpu-blocklist</code>，再打开游戏。</p>`;document.querySelector('#world-container').classList.add('fallback');},onTravelState(traveling){document.querySelector('#voyage-banner').hidden=!traveling;app.classList.toggle('is-traveling',traveling);document.querySelector('#station-focus').inert=traveling;document.querySelector('#station-list').inert=traveling;document.querySelector('#exploration-bar').inert=traveling;document.querySelector('.explore-hud').inert=traveling;}});
 renderIsland(islandLayout);
 onboarding.start();
 if(import.meta.env.DEV)window.__quest={state,levels,tasks,get world(){return world;},get layout(){return islandLayout;},refresh:renderIsland,openTask};

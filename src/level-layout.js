@@ -1,5 +1,5 @@
 import { stations, tasks } from './curriculum.js';
-import { findPath,clearSegment } from './navigation.js';
+import { findPath,clearSegment,terrainNavigationGrid } from './navigation.js';
 import { placeLadders } from './ladder-layout.js';
 import { createShoreline, onLand, distanceToShore } from './shoreline.js';
 export { onLand } from './shoreline.js';
@@ -189,10 +189,10 @@ function generateLayout(level, seed,scale) {
   layout.terrainReady=true;
   placeLadders(layout);
   // Re-route teaching paths over the finished terrain, including legal steps and ramps.
-  const finalRoads=[];
+  const finalRoads=[],navigationGrid=terrainNavigationGrid(layout);
   for(const goal of [layout.dock,...layout.workshops.map(w=>({x:w.approach[0],z:w.approach[1]}))]){
     if(Math.hypot(goal.x-layout.spawn.x,goal.z-layout.spawn.z)<.01)continue;
-    const path=findPath(layout.spawn,goal,(x,z)=>blockedAt(layout,x,z,playerRadius),layout.bounds,(a,b)=>canWalkSegment(layout,a,b),layout.ladders);
+    const path=findPath(layout.spawn,goal,(x,z)=>blockedAt(layout,x,z,playerRadius),layout.bounds,(a,b)=>canWalkSegment(layout,a,b),layout.ladders,null,navigationGrid);
     if(!path.length||Math.hypot(path.at(-1).x-goal.x,path.at(-1).z-goal.z)>.15)throw new LayoutPlacementError(`No safe elevation route in ${level.id}`);
     const points=[layout.spawn,...path];for(let i=1;i<points.length;i++)if(!points[i].ladder)finalRoads.push({a:points[i-1],b:points[i]});
   }

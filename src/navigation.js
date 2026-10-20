@@ -1,4 +1,21 @@
 import { createAmbientWalk } from './ambient-walk.js';
+import { terrainTileSize } from './terrain.js';
+
+// Keep the usual coarse grid for fast searches. Only a failed query adds the
+// actual voxel centres: a .4 grid can entirely miss a safe 1.3-wide cliff ledge.
+export function terrainNavigationGrid(layout){
+  if(!layout.terrain)return null;
+  const axis=extent=>Array.from({length:Math.ceil(extent/terrainTileSize)},(_,i)=>-extent/2+(i+.5)*terrainTileSize).filter(x=>x<=extent/2);
+  return {x:axis(layout.width),z:axis(layout.depth)};
+}
+function mergedAxis(min,max,extra){
+  const values=Array.from({length:Math.round((max-min)/.4)+1},(_,i)=>min+i*.4).concat(extra.filter(x=>x>=min&&x<=max)).sort((a,b)=>a-b);
+  return values.filter((x,i)=>!i||x-values[i-1]>1e-7);
+}
+function nearestIndex(values,value){
+  let low=0,high=values.length-1;while(low<high){const mid=(low+high)>>1;if(values[mid]<value)low=mid+1;else high=mid;}
+  return low&&Math.abs(values[low-1]-value)<Math.abs(values[low]-value)?low-1:low;
+}
 
 // Planning and movement share the same swept clearance, including both endpoints.
 export function clearSegment(from,to,blocked,canTraverse=()=>true) {
@@ -11,17 +28,24 @@ export function clearSegment(from,to,blocked,canTraverse=()=>true) {
   return true;
 }
 // Grid A* plus line-of-sight smoothing keeps click-to-walk routes clear of furniture.
-export function findPath(from, to, blocked, bounds = {minX:-12,maxX:12,minZ:-8.2,maxZ:8.2},canTraverse=()=>true,ladders=[],cache=null,retryAnchors=false) {
+export function findPath(from,to,blocked,bounds={minX:-12,maxX:12,minZ:-8.2,maxZ:8.2},canTraverse=()=>true,ladders=[],cache=null,terrainGrid=null){
+  const path=searchPath(from,to,blocked,bounds,canTraverse,ladders,cache);
+  if(path.length||!terrainGrid)return path;
+  const detail=cache?(cache.detail??={}):{},axes=detail.axes??={x:mergedAxis(bounds.minX,bounds.maxX,terrainGrid.x),z:mergedAxis(bounds.minZ,bounds.maxZ,terrainGrid.z)};
+  return searchPath(from,to,blocked,bounds,canTraverse,ladders,detail,false,axes);
+}
+function searchPath(from,to,blocked,bounds,canTraverse,ladders,cache=null,retryAnchors=false,axes=null){
   const clear=(x,z)=>!blocked(x,z)&&!blocked(x+.035,z)&&!blocked(x-.035,z)&&!blocked(x,z+.035)&&!blocked(x,z-.035);
   const visible=(a,b)=>clearSegment(a,b,blocked,canTraverse);
   if(!clear(from.x,from.z)||!clear(to.x,to.z))return [];
   if(!blocked(to.x,to.z)&&visible(from,to))return [{...to}];
   const step = .4;
-  const cols = Math.round((bounds.maxX-bounds.minX)/step)+1;
-  const rows = Math.round((bounds.maxZ-bounds.minZ)/step)+1;
+  const cols = axes?.x.length??Math.round((bounds.maxX-bounds.minX)/step)+1;
+  const rows = axes?.z.length??Math.round((bounds.maxZ-bounds.minZ)/step)+1;
   const points=cache?(cache.points??=new Array(cols*rows)):null;
-  const point = n => points?(points[n]??=({x:bounds.minX+(n%cols)*step,z:bounds.minZ+Math.floor(n/cols)*step})):({x:bounds.minX+(n%cols)*step,z:bounds.minZ+Math.floor(n/cols)*step});
-  const node = p => Math.max(0,Math.min(rows-1,Math.round((p.z-bounds.minZ)/step)))*cols+Math.max(0,Math.min(cols-1,Math.round((p.x-bounds.minX)/step)));
+  const coordinate=n=>({x:axes?axes.x[n%cols]:bounds.minX+(n%cols)*step,z:axes?axes.z[Math.floor(n/cols)]:bounds.minZ+Math.floor(n/cols)*step});
+  const point = n => points?(points[n]??=coordinate(n)):coordinate(n);
+  const node = p => axes?nearestIndex(axes.z,p.z)*cols+nearestIndex(axes.x,p.x):Math.max(0,Math.min(rows-1,Math.round((p.z-bounds.minZ)/step)))*cols+Math.max(0,Math.min(cols-1,Math.round((p.x-bounds.minX)/step)));
   const free=cache?(cache.free??=new Int8Array(cols*rows)):new Int8Array(cols*rows),edges=cache?(cache.edges??=new Int8Array(cols*rows*9)):null;
   const isFree = n => {if(n<0||n>=cols*rows)return false;if(!free[n]){const p=point(n);free[n]=clear(p.x,p.z)?1:-1;}return free[n]>0;};
   const connected=(current,next,dx,dz)=>{if(!edges)return visible(point(current),point(next));const key=current*9+(dz+1)*3+dx+1;if(!edges[key])edges[key]=visible(point(current),point(next))?1:-1;return edges[key]>0;};
@@ -86,7 +110,7 @@ export function findPath(from, to, blocked, bounds = {minX:-12,maxX:12,minZ:-8.2
       // The swept segment below checks the real obstacle/terrain clearance,
       // including corners, for diagonal and straight edges alike.
       if(!connected(current,next,dx,dz))continue;
-      const nextCost=cost[current]+Math.hypot(dx,dz)*step;
+      const nextCost=cost[current]+(axes?Math.hypot(point(next).x-point(current).x,point(next).z-point(current).z):Math.hypot(dx,dz)*step);
       if(nextCost<cost[next]){cost[next]=nextCost;parents[next]=current;parentLinks.delete(next);push(next,nextCost+heuristic(next));}
     }
     for(const link of links.get(current)||[]){
@@ -94,7 +118,7 @@ export function findPath(from, to, blocked, bounds = {minX:-12,maxX:12,minZ:-8.2
       if(!closed[next]&&nextCost<cost[next]){cost[next]=nextCost;parents[next]=current;parentLinks.set(next,link);push(next,nextCost+heuristic(next));}
     }
   }
-  if(reached===null)return retryAnchors?[]:findPath(from,to,blocked,bounds,canTraverse,ladders,cache,true);
+  if(reached===null)return retryAnchors?[]:searchPath(from,to,blocked,bounds,canTraverse,ladders,cache,true,axes);
   const raw=[];let n=reached;
   while(parents[n]!==-1){const link=parentLinks.get(n);raw.unshift(point(n));if(link)raw.unshift({...link.entry},{...link.exit,ladder:link.id,fromTop:link.fromTop});n=parents[n];}
   raw.unshift(point(n));
@@ -112,11 +136,11 @@ export function findPath(from, to, blocked, bounds = {minX:-12,maxX:12,minZ:-8.2
 // Runtime collision geometry is fixed for an island. Reuse grid clearance and
 // directed adjacent-edge checks across clicks; endpoints and smoothing still
 // receive exact checks. Keep only one planner per active island in the world.
-export function createNavigator(blocked,bounds,canTraverse=()=>true,ladders=[]){
+export function createNavigator(blocked,bounds,canTraverse=()=>true,ladders=[],terrainGrid=null){
   const clear=(a,b)=>clearSegment(a,b,blocked,canTraverse);
   let cache={},walk=createAmbientWalk(clear);
   return {findPath(from,to){
-    const path=findPath(from,to,blocked,bounds,canTraverse,ladders,cache);let previous=from;
+    const path=findPath(from,to,blocked,bounds,canTraverse,ladders,cache,terrainGrid);let previous=from;
     for(const point of path){if(!point.ladder)walk.acceptVerified(previous,point);previous=point;}
     return path;
   },advance(from,point,distance){if(point.ladder)return null;return walk.advance(from,point,distance);},invalidate(){cache={};walk=createAmbientWalk(clear);},get movement(){return walk.stats;}};

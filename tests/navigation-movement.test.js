@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createNavigator,clearSegment,findPath} from '../src/navigation.js';
+import {createNavigator,clearSegment,findPath,terrainNavigationGrid} from '../src/navigation.js';
 import {canWalkSegment} from '../src/terrain.js';
 
 test('automatic routes follow a safe diagonal bend even when orthogonal grid samples are blocked',()=>{
@@ -20,6 +20,18 @@ test('diagonal expansion still rejects touching obstacle corners',()=>{
   const touching=(x,z)=>x<0&&z>-.04||z<0&&x>-.04;
   assert.equal(clearSegment(start,goal,touching),false);
   assert.deepEqual(findPath(start,goal,touching,bounds),[],'a zero-width corner is not a passage');
+});
+
+test('failed coarse searches add terrain-centred samples without weakening collision or rescanning during movement',()=>{
+  const bounds={minX:-2,maxX:2,minZ:-2,maxZ:2},from={x:-1.8,z:-.65},bend={x:.65,z:-.65},to={x:.65,z:1.8};
+  const distance=(p,a,b)=>{const dx=b.x-a.x,dz=b.z-a.z,t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.z-a.z)*dz)/(dx*dx+dz*dz)));return Math.hypot(p.x-a.x-t*dx,p.z-a.z-t*dz);};
+  let calls=0;const blocked=(x,z)=>{calls++;return Math.min(distance({x,z},from,bend),distance({x,z},bend,to))>.065;},grid=terrainNavigationGrid({width:5.2,depth:5.2,terrain:{}});
+  assert.deepEqual(findPath(from,to,blocked,bounds),[],'the coarse grid misses the whole valid ledge');
+  const nav=createNavigator(blocked,bounds,()=>true,[],grid),path=nav.findPath(from,to);assert.ok(path.length>=2);let previous=from;
+  for(const p of path){assert.ok(clearSegment(previous,p,blocked));previous=p;}const planned=calls;let position=from;
+  for(const p of path){let next;do{next=nav.advance(position,p,.07);assert.ok(next);position=next;}while(!next.done);}assert.equal(calls,planned,'fallback routes also reuse certified movement');assert.deepEqual({x:position.x,z:position.z},to);
+  nav.invalidate();assert.ok(nav.findPath(from,to).length,'invalidation clears both grids');
+  const closed=createNavigator((x,z)=>blocked(x,z)||x>.1&&x<.2,bounds,()=>true,[],grid);assert.deepEqual(closed.findPath(from,to),[],'refinement never opens a truly blocked passage');
 });
 
 test('a nearest grid sample trapped behind a corner does not strand the actual reachable position',()=>{
