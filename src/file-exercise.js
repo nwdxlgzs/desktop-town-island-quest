@@ -24,9 +24,22 @@ export function mountFileExercise(root,p,{on,finish,tell,shortcut,step}){
     root.querySelector('#fm-back').disabled=!history.length;root.querySelector('#fm-up').disabled=current==='root';syncSelection();evaluate();
     if(editing){const input=items.querySelector('input');input.focus();const dot=fs.entries.get(editing).type==='file'?input.value.lastIndexOf('.'):-1;input.setSelectionRange(0,dot>0?dot:input.value.length);}else if(focusId)items.querySelector(`[data-entry="${focusId}"]`)?.focus();
   }
-  function commit(){if(!editing)return true;const error=fs.rename(editing,items.querySelector('input').value);if(error){tell(error);items.querySelector('input').focus();return false;}const id=editing;editing=null;render(id);tell('名称已更新。',true);return true;}
+  function commit(blur=false){
+    if(!editing)return true;
+    const id=editing,input=items.querySelector('input'),entry=fs.entries.get(id),empty=!input.value.trim();
+    const name=empty?(entry.type==='folder'?fs.defaultFolderName(entry.parent,id):entry.name):input.value;
+    const error=fs.rename(id,name);
+    if(error&&!blur){tell(error);return false;}
+    // Keep the clicked item/button in place. Rebuilding the list during blur
+    // would swallow its pending click, or destroy a text-selection gesture.
+    editing=null;const label=document.createElement('span');label.textContent=entry.name;input.replaceWith(label);
+    const row=items.querySelector(`[data-entry="${id}"]`);row.draggable=true;
+    for(const nav of manager.querySelectorAll(`[data-nav="${id}"]`))nav.lastChild.textContent=entry.name;
+    syncSelection();evaluate();if(!blur)row.focus();
+    tell(error?`${error} 已保留原名称，可再次重命名。`:empty?`已使用名称「${entry.name}」。可从清单拖选目标名称，复制后再重命名粘贴。`:'名称已更新。',!error);return true;
+  }
   function navigate(id,back=false){if(fs.entries.get(id)?.type!=='folder'||id===current)return;if(!commit())return;closeMenu();if(!back)history.push(current);current=id;selected.clear();preview.hidden=true;render();items.focus();tell(`${fs.entries.get(id).name}已打开。${clipboard?`现在可按 Ctrl+V ${clipboard.mode==='copy'?'复制':'移动'}文件。`:'双击打开不会移动文件。'}`,true);}
-  function newFolder(){if(!commit())return;closeMenu();const folder=fs.folder(current);selected.clear();selected.add(folder.id);editing=folder.id;render();tell('已创建文件夹。输入名称后按 Enter；以后也能右键重命名。',true);}
+  function newFolder(){if(!commit())return;closeMenu();const folder=fs.folder(current);selected.clear();selected.add(folder.id);editing=folder.id;render();tell('已创建文件夹。可以去上方清单拖选目标名称并 Ctrl+C，再选中文件夹 → 重命名 → Ctrl+V → Enter。',true);}
   function check(){if(!commit())return;evaluate();if(issue){tell(issue.message);root.querySelector('#fm-reset').focus();return;}if(fs.matches(folderName,targets,copy)&&multi){if(finish())tell(`${folderName}内的${targets.length}份资料已${copy?'备份':'整理'}好${copy?'，原件仍在资料区':''}。`,true);return;}
     const dest=fs.list('root').find(e=>e.type==='folder'&&e.name===folderName);if(!dest){tell(`请在“信息科技资料”中新建文件夹，并命名为「${folderName}」。`);return;}
     const content=fs.list(dest.id),extra=content.filter(e=>!targets.some(i=>e.source===fs.originals[i]));if(extra.length){tell(`「${extra.map(e=>e.name).join('、')}」不在本次清单。把它移回资料区再检查。`);return;}
@@ -52,7 +65,7 @@ export function mountFileExercise(root,p,{on,finish,tell,shortcut,step}){
   on(manager,'click',e=>{const nav=e.target.closest('[data-nav]');if(nav)navigate(nav.dataset.nav);const b=e.target.closest('[data-fm-action]');if(b&&!b.disabled)action(b.dataset.fmAction);});
   on(items,'click',e=>{if(e.target.closest('input'))return;if(!commit())return;closeMenu();const row=e.target.closest('[data-entry]');if(!row){selected.clear();syncSelection();return;}const id=row.dataset.entry;if(e.ctrlKey||e.metaKey){selected.has(id)?selected.delete(id):selected.add(id);}else if(e.shiftKey&&lastSelected){const ids=visible().map(e=>e.id),a=ids.indexOf(lastSelected),b=ids.indexOf(id);selected.clear();ids.slice(Math.min(a,b),Math.max(a,b)+1).forEach(id=>selected.add(id));}else{selected.clear();selected.add(id);}lastSelected=id;if(selected.size>1&&targets.every(i=>selected.has(fs.originals[i]))){multi=true;step(1);}syncSelection();});
   on(items,'dblclick',e=>{const row=e.target.closest('[data-entry]');if(row&&!e.target.closest('input'))action('open',row.dataset.entry);});
-  on(items,'focusout',e=>{if(e.target.id==='folder-name'&&!menu.contains(e.relatedTarget))commit();});
+  on(items,'focusout',e=>{if(e.target.id==='folder-name')commit(true);});
   on(manager,'contextmenu',e=>{if(e.target.closest('input'))return;e.preventDefault();if(!commit())return;const row=e.target.closest('[data-entry]');contextId=row?.dataset.entry||null;if(row&&!selected.has(contextId)){selected.clear();selected.add(contextId);syncSelection();}if(!row)selected.clear();
     syncSelection();menu.innerHTML=(row?`<button role="menuitem" data-context="open">打开</button><button role="menuitem" data-context="cut">剪切 <kbd>Ctrl+X</kbd></button><button role="menuitem" data-context="copy">复制 <kbd>Ctrl+C</kbd></button><button role="menuitem" data-context="rename" ${selected.size===1?'':'disabled'}>重命名 <kbd>F2</kbd></button>`:`<button role="menuitem" data-context="new">新建文件夹</button><button role="menuitem" data-context="paste" ${clipboard?'':'disabled'}>粘贴 <kbd>Ctrl+V</kbd></button>`);
     if(row)menu.insertAdjacentHTML('beforeend','<button role="menuitem" data-context="delete">删除 <kbd>Delete</kbd></button>');

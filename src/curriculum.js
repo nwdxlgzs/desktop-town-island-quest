@@ -15,6 +15,7 @@ for(const id of Object.keys(adventure.variants))resolveTask(id);
 export const missions=adventure.missions;
 export const biomes=adventure.biomes;
 export let levels=createJourney(adventure,0);
+export const journeyForSeed=seed=>createJourney(adventure,seed);
 export function configureJourney(seed){levels=createJourney(adventure,seed);return levels;}
 export const targetMinutes = adventure.targetMinutes;
 export const challengesPerMinute = adventure.challengesPerMinute;

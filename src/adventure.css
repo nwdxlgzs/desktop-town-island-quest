@@ -61,6 +61,9 @@
 .is-traveling .main-nav { pointer-events: none; opacity: .5; }
 .is-traveling .station-focus { opacity: .6; }
 .fallback .boat-marker { margin-left: auto; }
+.fallback .world-loading { position: static; width: 100%; padding: 15px 10px; background: transparent; pointer-events: none; }
+.fallback #workshop-markers { display: flex; flex-wrap: wrap; }
+.fallback .world-tools { display: flex; }
 .exploration-bar { display: flex; gap: 16px; align-items: center; margin-top: 10px; min-height: 112px; flex-shrink: 0; }
 .mini-map-wrap { width: 154px; flex-shrink: 0; }
 .mini-map { width: 154px; height: 85px; display: block; background: #deebe6; border: 1px solid #d2dfd0; border-radius: 10px; }
@@ -78,6 +81,21 @@
 .workshop-chip b { font-weight: 500; }
 .workshop-chip small { color: #96a28a; font-size: 9px; }
 .workshop-chip.done { opacity: .65; }
+.workshop-chip.untouched, .workshop-chip.in-progress { border: 2px solid #bd8136; background: #fff3d7; color: #704716; }
+.workshop-chip.untouched > span, .workshop-chip.in-progress > span { background: #a76721; color: white; }
+.workshop-chip.untouched b, .workshop-chip.in-progress b { font-weight: 700; }
+.workshop-chip.untouched small, .workshop-chip.in-progress small { color: #785323; font-weight: 600; }
+.workshop-chip.in-progress { border-color: #b99753; background: #fff8e8; }
+.world-marker.workshop-pending { background: #fff3d7; border: 2px solid #bd8136; color: #704716; box-shadow: 0 2px 5px #58432630; }
+.world-marker.workshop-pending .marker-number { background: #a76721; color: white; }
+.world-marker .marker-status { white-space: nowrap; font-size: 10px; font-weight: 700; }
+.world-marker.workshop-done { background: #edf4e9; color: #54715b; border-color: #a4b69a; }
+.world-marker[data-world] { display: grid; grid-template-columns: auto auto auto; column-gap: 6px; row-gap: 1px; }
+.world-marker[data-world] .marker-number { grid-column: 1; grid-row: 1 / 3; }
+.world-marker[data-world] b { grid-column: 2; grid-row: 1; }
+.world-marker[data-world] > svg { grid-column: 3; grid-row: 1 / 3; }
+.world-marker[data-world] .marker-status { grid-column: 2; grid-row: 2; text-align: left; font-size: 9px; }
+.overview .world-marker .marker-status { display: none; }
 .overview .world-marker:not(.boat-marker) b, .overview .world-marker:not(.boat-marker) > svg { display: none; }
 .overview .world-marker:not(.boat-marker) { padding: 4px; }
 .station-focus { min-height: 83px; padding: 13px 18px; margin-top: 7px; }

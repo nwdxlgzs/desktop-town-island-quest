@@ -44,8 +44,9 @@ export function demoActions(task){
     case 'files':{
       const names=p.files||['查证清单.txt','临时草稿.tmp','素材来源表.xlsx','旧版通知.txt'],targets=p.targets||[0,2],copy=p.operation==='copy';
       // Copy before opening the name editor: clicking the assignment would commit its name on blur.
-      add('selectText','.fm-assignment','从上方清单中拖选目标文件夹名称，不包含前后的标点',{value:p.folder||'查证资料'});add('copyText','.fm-assignment','按 Ctrl+C 复制文件夹名，文字不用重新打');
-      click('#new-folder','点击工具栏中的“新建文件夹”，默认名称已选中');add('paste','#folder-name','按 Ctrl+V 粘贴刚才复制的文件夹名');key('#folder-name','Enter','按 Enter 确认名称');
+      click('#new-folder','点击“新建文件夹”，暂时保留默认名称');
+      add('selectText','.fm-assignment','离开命名框，在上方清单拖选目标文件夹名称；默认名称会保留',{value:p.folder||'查证资料'});add('copyText','.fm-assignment','按 Ctrl+C 复制文件夹名，文字不用重新打');
+      click('[data-folder]','选中刚创建的文件夹');click('[data-fm-action="rename"]','点击“重命名”（也可以按 F2），原名称已选中');add('paste','#folder-name','按 Ctrl+V 粘贴刚才复制的文件夹名');key('#folder-name','Enter','按 Enter 确认名称');
       targets.forEach((i,n)=>click(`[data-file="${i}"]`,`${n?'按住 Ctrl，再单击':'先单击'}「${names[i]}」`,{ctrlKey:n>0}));
       click(`[data-fm-action="${copy?'copy':'cut'}"]`,copy?'点击“复制”（Ctrl+C），保留原件':'点击“剪切”（Ctrl+X），准备移动原件');
       add('double','[data-folder]','双击刚建立的目标文件夹');click('[data-fm-action="paste"]','点击“粘贴”（Ctrl+V），观察文件出现在目标目录');click('#fm-check','确认目录内容，点击“检查整理结果”');break;

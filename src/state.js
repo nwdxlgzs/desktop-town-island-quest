@@ -1,6 +1,8 @@
 import { taskIds, tasks, stations, levels, biomes, totalXP, stationTasks, targetMinutes, challengesPerMinute, missionCount, configureJourney } from './curriculum.js';
 import { normalizeQuality,migrateQuality } from './quality.js';
 import { useSessionStep } from './session-flow.js';
+import { islandProgress,unlockedThrough } from './progress-rules.js';
+import { randomSeed,parseSeed,progressFile,readProgress } from './progress-file.js';
 const KEY = 'desktop-quest-v3';
 export const preview=globalThis.location?.hash==='#BYPASS';
 const saveKey=preview?`${KEY}-demo`:KEY;
@@ -16,7 +18,7 @@ function prepareProgress(result){
   return result;
 }
 globalThis.addEventListener?.('hashchange',()=>{if((globalThis.location?.hash==='#BYPASS')!==preview)globalThis.location.reload();});
-const fresh = () => ({version:3, routeVersion:1, onboardingVersion:0, seed:Math.floor(Math.random()*4294967296), currentLevel:0, unlocked:0, graduated:false, completed:[], attempts:{}, finishedAt:{}, sound:true, music:false, musicPreference:1, quality:normalizeQuality(),exploration:{shards:[],restored:[],species:[],sail:'cream'}, seconds:0, records:{}, startedAt:new Date().toISOString()});
+const fresh = () => ({version:3, routeVersion:1, onboardingVersion:0, seed:randomSeed(), currentLevel:0, unlocked:0, graduated:false, completed:[], attempts:{}, finishedAt:{}, sound:true, music:false, musicPreference:1, quality:normalizeQuality(),exploration:{shards:[],restored:[],species:[],sail:'cream'}, seconds:0, records:{}, startedAt:new Date().toISOString()});
 export let storageAvailable = true;
 export const state = (()=>{
   try {
@@ -37,8 +39,7 @@ export const state = (()=>{
     }
     if(Number.isFinite(raw.seconds)) result.seconds=Math.max(0,raw.seconds);
     if(typeof raw.startedAt==='string') result.startedAt=raw.startedAt;
-    let eligible=0;
-    while(eligible<levels.length-1 && levels[eligible].tasks.every(id=>result.completed.includes(id))) eligible++;
+    const eligible=unlockedThrough(levels,result.completed);
     if(raw.version===3&&raw.routeVersion===1){
       result.unlocked=Math.max(eligible,Math.min(levels.length-1,Number.isInteger(raw.unlocked)?raw.unlocked:0));
       result.currentLevel=Math.max(0,Math.min(result.unlocked,Number.isInteger(raw.currentLevel)?raw.currentLevel:0));
@@ -64,12 +65,14 @@ export function collectDiscovery(item){
 export const xp = () => state.completed.reduce((sum,id)=>sum+tasks[id].xp,0);
 export const stationCount = id => stationTasks(id).filter(completed).length;
 export const levelComplete = level => level.tasks.every(completed);
+export const travelProgress = level => islandProgress(level,state.completed);
+export const canSail = level => travelProgress(level).eligible;
 export const nextTask = level => level.tasks.find(id=>!completed(id)) || level.tasks[0];
 export function finishTask(id,step) {
   if(typeof document!=='undefined'&&!useSessionStep(step,2,id))return null;
   if(!taskIds.includes(id)) return false;
   const first=!completed(id);
-  if(first){state.completed.push(id);state.finishedAt[id]=new Date().toISOString();}
+  if(first){state.completed.push(id);state.finishedAt[id]=new Date().toISOString();state.unlocked=Math.max(state.unlocked,unlockedThrough(levels,state.completed));}
   const task=tasks[id];
   if(task.kind==='save'||task.kind==='delivery')state.records[task.params?.record||id]=task.params?.expected||(task.kind==='save'?'实验成功':'任务完成，出发！');
   persist();return first;
@@ -77,12 +80,19 @@ export function finishTask(id,step) {
 export function visitLevel(index,step) {
   if(typeof document!=='undefined'&&!useSessionStep(step,5,index))return false;
   if(!Number.isInteger(index) || index<0 || index>=levels.length) return false;
-  if(index>state.unlocked && (index!==state.currentLevel+1 || !levelComplete(levels[state.currentLevel]))) return false;
+  if(index>state.unlocked && (index!==state.currentLevel+1 || !canSail(levels[state.currentLevel]))) return false;
   state.currentLevel=index;state.unlocked=Math.max(state.unlocked,index);persist();return true;
 }
 export function recordAttempt(id){state.attempts[id]=(Number(state.attempts[id])||0)+1;persist();}
-export function resetState(){const sound=state.sound,music=state.music,quality=state.quality,onboardingVersion=state.onboardingVersion;Object.keys(state).forEach(k=>delete state[k]);Object.assign(state,fresh(),{sound,music,quality,onboardingVersion});configureJourney(state.seed);prepareProgress(state);persist();}
-export function report(){return {title:'电脑小镇 · 岛屿冒险学习报告',exportedAt:new Date().toISOString(),startedAt:state.startedAt,completed:state.completed.length,total:taskIds.length,missionCount,completedMissions:levels.flatMap(l=>l.workshops).filter(w=>w.tasks.every(completed)).length,targetMinutes,challengesPerMinute,estimatedChallengeMinutes:missionCount/challengesPerMinute,xp:xp(),totalXP,activeSeconds:state.seconds,graduated:state.graduated,
+export function resetState(seed=randomSeed()){seed=parseSeed(seed);const sound=state.sound,music=state.music,quality=state.quality,onboardingVersion=state.onboardingVersion;Object.keys(state).forEach(k=>delete state[k]);Object.assign(state,fresh(),{seed,sound,music,quality,onboardingVersion});configureJourney(state.seed);prepareProgress(state);persist();}
+export const exportProgress=()=>progressFile(state,preview);
+export function importProgress(text){
+  const next=readProgress(text,preview);
+  // Write first: a full/blocked store must not destroy the running session.
+  try{localStorage.setItem(saveKey,JSON.stringify(next));}catch{storageAvailable=false;throw new Error('浏览器无法保存导入进度，当前进度已保留。请允许本地存储后重试。');}
+  configureJourney(next.seed);Object.keys(state).forEach(key=>delete state[key]);Object.assign(state,prepareProgress(next));
+}
+export function report(){return {title:'电脑小镇 · 岛屿冒险学习报告',seed:state.seed,exportedAt:new Date().toISOString(),startedAt:state.startedAt,completed:state.completed.length,total:taskIds.length,missionCount,completedMissions:levels.flatMap(l=>l.workshops).filter(w=>w.tasks.every(completed)).length,targetMinutes,challengesPerMinute,estimatedChallengeMinutes:missionCount/challengesPerMinute,xp:xp(),totalXP,activeSeconds:state.seconds,graduated:state.graduated,
   islands:levels.map(level=>({name:level.name,minutes:level.minutes,completed:levelComplete(level),workshops:level.workshops.map(w=>({name:w.name,theme:w.theme,completed:w.tasks.every(completed)})),tasks:level.tasks.map(id=>({name:tasks[id].title,skill:tasks[id].skill,completed:completed(id),attempts:state.attempts[id]||0,finishedAt:state.finishedAt[id]||null}))})),
   stations:stations.map(s=>({name:s.name,completed:stationCount(s.id),total:stationTasks(s.id).length}))};}
 export function download(data,name,type='text/plain;charset=utf-8'){

@@ -245,7 +245,7 @@
   "files": [
     {
       "label": "建立资料文件夹",
-      "help": "在资料区新建「{folder}」，输入名称后按 Enter。名称错了可右键重命名。",
+      "help": "新建文件夹后，在清单中拖选「{folder}」并 Ctrl+C；再选中文件夹 → 重命名（F2）→ Ctrl+V → Enter。离开空命名框会采用默认名称，不必重新打字。",
       "target": "#folder-name, #new-folder"
     },
     {

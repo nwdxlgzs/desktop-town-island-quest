@@ -17,7 +17,7 @@ export function taskTeaching(task){
     const names=p.files||['查证清单.txt','临时草稿.tmp','素材来源表.xlsx','旧版通知.txt'],targets=(p.targets||[0,2]).map(i=>names[i]),copy=p.operation==='copy',folder=p.folder||'查证资料';
     steps=[
       {label:'先回到资料区',help:'点击左侧“信息科技资料”。先读清上方清单，只处理本题指定的文件。'},
-      {label:`新建「${folder}」`,help:`先在上方清单中拖选「${folder}」并按 Ctrl+C，再点击“新建文件夹”，按 Ctrl+V 替换默认名称，按 Enter 确认。输错可选中文件夹，按 F2 或右键选择“重命名”。`},
+      {label:`复制名称并重命名为「${folder}」`,help:`点击“新建文件夹”后，可先离开命名框保留默认名。在上方清单拖选「${folder}」并按 Ctrl+C，再选中文件夹，点“重命名”（或 F2），按 Ctrl+V、Enter。现成文字可以选中复制，不必重新打字。`},
       {label:'一次选中清单文件',help:`先单击「${targets[0]}」，按住 Ctrl 再逐个单击「${targets.slice(1).join('、')}」。看到这些行同时高亮后松开 Ctrl；多选是本题的操作要求。`},
       {label:copy?'复制，保留原件':'剪切，准备移动',help:copy?'按 Ctrl+C，或点工具栏“复制”。本题是备份，不能用剪切或直接拖走原件。':'按 Ctrl+X，或点工具栏“剪切”。原件会标为等待移动；此时还没有离开资料区。'},
       {label:'进入目标文件夹并粘贴',help:`双击「${folder}」，再按 Ctrl+V 或点“粘贴”。双击文件夹只会打开它，不会自动搬运资料。`},

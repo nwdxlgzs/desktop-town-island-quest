@@ -7,7 +7,8 @@ export function createPracticeFiles(names){
   function validName(name){return !!name.trim()&&!/[<>:"/\\|?*\u0000-\u001f]/.test(name)&&!/[. ]$/.test(name)&&name!=='.'&&name!=='..';}
   function unique(parent,name,except){return !list(parent).some(e=>e.id!==except&&e.name.toLocaleLowerCase()===name.toLocaleLowerCase());}
   function rename(id,name){const entry=entries.get(id);if(!entry||id==='root')return '请选择一个文件或文件夹。';name=name.trim();if(!validName(name))return '名称不能为空，也不能包含 / \\ : * ? 等字符。';if(!unique(entry.parent,name,id))return '这里已有同名项目，请换一个名称。';entry.name=name;return null;}
-  function folder(parent){if(entries.get(parent)?.type!=='folder')return null;let name='新建文件夹',n=2;while(!unique(parent,name))name=`新建文件夹 (${n++})`;const id=`folder-${serial++}`;entries.set(id,{id,name,type:'folder',parent});return entries.get(id);}
+  function defaultFolderName(parent,except){let name='新建文件夹',n=2;while(!unique(parent,name,except))name=`新建文件夹 (${n++})`;return name;}
+  function folder(parent){if(entries.get(parent)?.type!=='folder')return null;const name=defaultFolderName(parent),id=`folder-${serial++}`;entries.set(id,{id,name,type:'folder',parent});return entries.get(id);}
   function descendant(id,parent){while(parent){if(parent===id)return true;parent=entries.get(parent)?.parent;}return false;}
   function transfer(ids,parent,copy=false){
     if(entries.get(parent)?.type!=='folder')return '请打开一个文件夹再粘贴。';
@@ -32,5 +33,5 @@ export function createPracticeFiles(names){
     const content=list(dest.id),expected=targets.map(i=>originals[i]);
     return content.length===expected.length&&expected.every(id=>content.some(e=>e.source===id))&&originals.every(id=>entries.get(id)?.parent===(!copy&&expected.includes(id)?dest.id:'root'));
   }
-  return {entries,originals,list,rename,folder,transfer,remove,matches,completionIssue};
+  return {entries,originals,list,rename,folder,defaultFolderName,transfer,remove,matches,completionIssue};
 }
