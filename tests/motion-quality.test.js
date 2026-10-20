@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createMotion,startJump,tickMotion,visualJump,runSpeed,walkSpeed} from '../src/motion.js';
 import {createQualityController,normalizeQuality,migrateQuality} from '../src/quality.js';
 
-test('jump remains a visual offset and running remains faster than walking',()=>{
+test('jump timer controls the visual offset and running remains faster than walking',()=>{
   const m=createMotion();assert.ok(runSpeed>walkSpeed);assert.equal(startJump(m),true);assert.equal(startJump(m),false);
   tickMotion(m,.34);assert.ok(visualJump(m)>.8);tickMotion(m,.35);assert.equal(visualJump(m),0);assert.equal(startJump(m),true);
 });

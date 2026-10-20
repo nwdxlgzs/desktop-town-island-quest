@@ -4,7 +4,7 @@ import {build} from 'esbuild';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {blockedAt} from '../src/level-layout.js';
-import {canWalkSegment,playerRadius,terrainTopOffset} from '../src/terrain.js';
+import {canWalkSegment,playerRadius,terrainTopOffset,footRadius} from '../src/terrain.js';
 
 // Actual input, planning and player loop, with no browser, GPU or map generator.
 test('actual movement rounds trees diagonally and exploration searches nearby reachable shards',async()=>{
@@ -33,7 +33,7 @@ test('actual movement rounds trees diagonally and exploration searches nearby re
   const originals=new Map(Object.keys(overrides).map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
   for(const [key,value]of Object.entries(overrides))Object.defineProperty(globalThis,key,{value,writable:true,configurable:true});
   function step(ms=1000/30){const callbacks=[...queue.values()];queue.clear();clock+=ms;for(const callback of callbacks)callback(clock);}
-  function key(type,key){const event=new Event(type,{cancelable:true});Object.defineProperty(event,'key',{value:key});window.dispatchEvent(event);}
+  function key(type,key,code=key){const event=new Event(type,{cancelable:true});Object.defineProperties(event,{key:{value:key},code:{value:code}});window.dispatchEvent(event);}
   function click(x,y,z){const p=world.screenPoint(x,y,z),event=new Event('pointerdown',{cancelable:true});for(const [key,value]of Object.entries({clientX:p.x,clientY:p.y,button:0,pointerId:1}))Object.defineProperty(event,key,{value});renderer.domElement.dispatchEvent(event);}
   function layout(spawn){return {seed:1,width:16,depth:16,shoreline:{radii:Array(32).fill(1)},bounds:{minX:-7,maxX:7,minZ:-7,maxZ:7},shoreX:8,dock:{x:6,z:0},boat:{x:10,z:0},spawn,level:{id:'fixed-tree',map:{npcLimit:0},npc:{radius:2,speed:.65}},workshops:[],npcSpawns:{},obstacles:[{x:0,z:0,w:.5,d:.5,type:'tree'}],roads:[],ladders:[],terraces:[],trees:[{x:0,z:0,scale:1}],mountains:[],villages:[],camps:[],reefs:[],exploration:[],wildlife:[]};}
   let world;const notices=[],explored=[];
@@ -83,7 +83,12 @@ test('actual movement rounds trees diagonally and exploration searches nearby re
     const coast={...voxel,spawn:{x:4.1,z:3.1},terraces:[]};world.loadLevel(coast);for(let i=0;i<4;i++)step();notices.length=0;
     click(4.55,terrainTopOffset,3.25);assert.ok(world.getDebugSnapshot().routeRemaining,'safe visible coastal floor has no inland air wall');
     for(let i=0;i<30&&world.getDebugSnapshot().routeRemaining;i++)step();assert.ok(Math.hypot(world.getDebugSnapshot().position.x-4.55,world.getDebugSnapshot().position.z-3.25)<1e-5);
-    key('keydown','d');for(let i=0;i<20;i++)step();key('keyup','d');const edge=world.getDebugSnapshot().position;assert.equal(blockedAt(coast,edge.x,edge.z,playerRadius),false);assert.ok(edge.x<=5.2-playerRadius,'body remains on the rendered tile');assert.deepEqual(notices,[]);
+    key('keydown','d');for(let i=0;i<20;i++)step();key('keyup','d');const edge=world.getDebugSnapshot().position;assert.equal(blockedAt(coast,edge.x,edge.z,playerRadius),false);assert.ok(edge.x<=5.2-footRadius,'feet remain on the rendered tile');assert.deepEqual(notices,[]);
+    const steps={...voxel,spawn:{x:0,z:1.45},terraces:[{x:0,z:0,r:1.2,ramp:.01,height:1},{x:2,z:0,r:1.2,ramp:.01,height:.5}]};
+    world.loadLevel(steps);for(let i=0;i<4;i++)step();key('keydown','w');for(let i=0;i<8;i++)step();key('keyup','w');assert.ok(world.getDebugSnapshot().position.z>=1.3,'walking alone cannot climb a one-unit riser');
+    key('keydown',' ','Space');key('keyup',' ','Space');key('keydown','w');for(let i=0;i<4;i++)step();key('keyup','w');assert.ok(world.getDebugSnapshot().position.z<1.3,'space grants a temporary extra-height crossing to a walk-connected landing');
+    for(let i=0;i<30;i++)step();assert.equal(world.getDebugSnapshot().motion.jump,0);key('keydown','s');for(let i=0;i<6;i++)step();key('keyup','s');assert.ok(world.getDebugSnapshot().position.z>1.3,'the same limited descent works without jumping');
+    world.loadLevel(steps);for(let i=0;i<4;i++)step();key('keydown',' ','Space');key('keyup',' ','Space');for(let i=0;i<30;i++)step();key('keydown','w');for(let i=0;i<8;i++)step();key('keyup','w');assert.ok(world.getDebugSnapshot().position.z>=1.3,'expired jumps no longer grant step clearance');
     // Slow presentation must never change the default user's chosen visuals.
     // A renderer stub verifies the real scheduling path, not actual GPU FPS.
     world.setQuality({preset:'auto',resolution:'1.5',maxFps:30});

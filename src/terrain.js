@@ -5,6 +5,8 @@ export const terrainTopOffset=.075;
 // Includes normal walking arm/leg swing and the backpack in any facing direction.
 export const playerRadius=.57;
 export const maxStepHeight=.6;
+export const extraStepHeight=maxStepHeight+terrainTileSize/2;
+export const footRadius=.28;
 export const riverX=(layout,z)=>layout.river.x+Math.sin(z*.19+layout.river.phase)*layout.river.amplitude;
 export function waterAt(layout,x,z,margin=0){
   if(layout.river&&Math.abs(x-riverX(layout,z))<layout.river.width/2+margin)return true;
@@ -29,25 +31,27 @@ export function terrainCellAt(layout,x,z){
   cache?.set(ix*65536+iz,cell);return cell;
 }
 
-// Check the whole circular footprint against the very same voxel tops that
-// are drawn. A centre-only height check lets shoulders enter a vertical cliff.
+// Feet need supporting floor; the wider body only collides with higher rock.
+// Lower neighbours are open space, not walls around a descending stair corner.
 export function terrainFootprintBlocked(layout,x,z,radius,allowWater=false){
   const center=terrainCellAt(layout,x,z);if(!center)return true;
   if(radius<=terrainTileSize/2){
     if(center.clearNeighborhood===undefined)center.clearNeighborhood=[-1,0,1].every(dx=>[-1,0,1].every(dz=>{
       const cell=terrainCellAt(layout,center.x+dx*terrainTileSize,center.z+dz*terrainTileSize);
-      return cell&&!cell.wet&&Math.abs(cell.elevation-center.elevation)<=maxStepHeight+1e-5;
+      return cell&&!cell.wet&&cell.elevation-center.elevation<=extraStepHeight+1e-5;
     }));
     if(center.clearNeighborhood)return false;
   }
   let waterAllowed;
-  const size=terrainTileSize,half=size/2,minX=Math.floor((x-radius+layout.width/2)/size),maxX=Math.floor((x+radius+layout.width/2)/size),minZ=Math.floor((z-radius+layout.depth/2)/size),maxZ=Math.floor((z+radius+layout.depth/2)/size);
+  const support=Math.min(radius,footRadius),size=terrainTileSize,half=size/2,minX=Math.floor((x-radius+layout.width/2)/size),maxX=Math.floor((x+radius+layout.width/2)/size),minZ=Math.floor((z-radius+layout.depth/2)/size),maxZ=Math.floor((z+radius+layout.depth/2)/size);
   for(let ix=minX;ix<=maxX;ix++)for(let iz=minZ;iz<=maxZ;iz++){
     const cx=-layout.width/2+(ix+.5)*size,cz=-layout.depth/2+(iz+.5)*size,dx=Math.max(0,Math.abs(x-cx)-half),dz=Math.max(0,Math.abs(z-cz)-half);
     if(dx*dx+dz*dz>radius*radius+1e-10)continue;
     const cell=terrainCellAt(layout,cx,cz);
-    if(!cell||Math.abs(cell.elevation-center.elevation)>maxStepHeight+1e-5)return true;
-    if(cell.wet){waterAllowed??=typeof allowWater==='function'?allowWater(layout,x,z,radius):allowWater;if(!waterAllowed)return true;}
+    const underFoot=dx*dx+dz*dz<=support*support+1e-10;
+    if(!cell){if(underFoot)return true;continue;}
+    if(cell.elevation-center.elevation>extraStepHeight+1e-5)return true;
+    if(cell.wet&&underFoot){waterAllowed??=typeof allowWater==='function'?allowWater(layout,x,z,support):allowWater;if(!waterAllowed)return true;}
   }
   return false;
 }
@@ -123,7 +127,8 @@ export function supportScenery(layout){
   }
   for(const {object,key,pad} of supports)object[key]=pad.height;
 }
-export function canWalkSegment(layout,from,to){
+export function canWalkSegment(layout,from,to,{up=maxStepHeight,down=maxStepHeight}={}){
+  const allowed=(a,b)=>b-a<=up+1e-5&&a-b<=down+1e-5;
   if(layout.terrain){
     // Visit every crossed voxel, including a tiny diagonal corner that a fixed
     // sampling interval could skip. Continuous legacy fixtures use sampling below.
@@ -137,15 +142,15 @@ export function canWalkSegment(layout,from,to){
     for(let i=1;i<times.length;i++){
       if(times[i]-times[i-1]<1e-10)continue;
       const t=(times[i]+times[i-1])/2,h=walkingHeightAt(layout,from.x+(to.x-from.x)*t,from.z+(to.z-from.z)*t);
-      if(Math.abs(h-last)>maxStepHeight+1e-5)return false;last=h;
+      if(!allowed(last,h))return false;last=h;
     }
-    return Math.abs(walkingHeightAt(layout,to.x,to.z)-last)<=maxStepHeight+1e-5;
+    return allowed(last,walkingHeightAt(layout,to.x,to.z));
   }
   const n=Math.max(1,Math.ceil(Math.hypot(to.x-from.x,to.z-from.z)/.15));
   let last=walkingHeightAt(layout,from.x,from.z);
   for(let i=1;i<=n;i++){
     const h=walkingHeightAt(layout,from.x+(to.x-from.x)*i/n,from.z+(to.z-from.z)*i/n);
-    if(Math.abs(h-last)>maxStepHeight+1e-5)return false;
+    if(!allowed(last,h))return false;
     last=h;
   }
   return true;

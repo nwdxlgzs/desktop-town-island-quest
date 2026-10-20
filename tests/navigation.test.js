@@ -51,7 +51,6 @@ test('vertical ladder links retain their landings without making cliffs walkable
 test('reported seed 3763093038 island 3 connects the two-mountain ledge and both ladder directions',()=>{
   const seed=3763093038,level=journeyForSeed(seed)[2],layout=createLayout(level,seed);assert.equal(level.name,'山林探索岛');assert.equal(layout.mountains.length,2);
   const blocked=(x,z)=>blockedAt(layout,x,z,playerRadius),traverse=(a,b)=>canWalkSegment(layout,a,b),ledge={x:4.25,z:12.25};
-  assert.deepEqual(findPath(layout.spawn,ledge,blocked,layout.bounds,traverse,layout.ladders),[],'reproduce the reported coarse-grid failure on the unchanged seeded map');
   const nav=createNavigator(blocked,layout.bounds,traverse,layout.ladders,terrainNavigationGrid(layout));
   for(const [from,to]of [[layout.spawn,ledge],[ledge,layout.spawn],[layout.spawn,layout.ladders[0].bottom],[layout.ladders[0].bottom,layout.spawn]]){
     const path=nav.findPath(from,to);assert.ok(path.length);assert.ok(path.some(p=>p.ladder),'the route uses real cliff ladders');let previous=from;

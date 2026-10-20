@@ -28,6 +28,12 @@ const {pathToFileURL}=require('node:url');
       assert.ok(await page.evaluate(()=>__quest.world.getDebugSnapshot().position.y)>6.7);
       await page.evaluate(()=>__quest.world.walkTo(__quest.layout.dock));
       await page.waitForFunction(()=>{const s=__quest.world.getDebugSnapshot(),p=s.layout.dock;return !s.routeRemaining&&Math.hypot(s.position.x-p.x,s.position.z-p.z)<.05;},null,{timeout:25000});
+      // Walk beside the reported right-side cactus using native held keys.
+      const cactus=await page.evaluate(()=>__quest.layout.trees.find(t=>t.x>8&&t.x<10)),start={x:cactus.x+1,z:cactus.z};
+      await page.evaluate(p=>__quest.world.walkTo(p),start);await page.waitForFunction(p=>{const s=__quest.world.getDebugSnapshot();return !s.routeRemaining&&Math.hypot(s.position.x-p.x,s.position.z-p.z)<.02;},start,{timeout:15000});
+      await page.keyboard.down('s');await page.waitForFunction(z=>__quest.world.getDebugSnapshot().position.z>z,cactus.z+.9,{timeout:3000});await page.keyboard.up('s');
+      const corner=await page.evaluate(()=>__quest.world.getDebugSnapshot().position);assert.ok(Math.abs(corner.x-start.x)<.02,'cactus corner needs no sideways collision slide');await page.screenshot({path:'test-results/reported-cactus-slope.png'});
+      await page.keyboard.down('w');await page.waitForFunction(z=>__quest.world.getDebugSnapshot().position.z<z,cactus.z+.1,{timeout:3000});await page.keyboard.up('w');
     }
     const original=await page.evaluate(()=>localStorage.getItem('desktop-quest-v3'));
     await page.evaluate(()=>location.hash='');await page.locator('#teaching-library-nav').waitFor({state:'detached'});await page.locator('#station-focus h2').waitFor();
@@ -43,6 +49,6 @@ const {pathToFileURL}=require('node:url');
     assert.deepEqual(JSON.parse(await page.evaluate(()=>localStorage.getItem('desktop-quest-v3'))).completed,JSON.parse(original).completed,'demo entry preserves classroom task progress');
     const demo=await page.evaluate(()=>JSON.parse(localStorage.getItem('desktop-quest-v3-demo')));assert.equal(demo.completed.length,243);assert.equal(demo.seed,3763093038);
     assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
-    console.log(JSON.stringify({built,seed:3763093038,island:3,actualLedgeRoundTrip:!built,konamiActivation:true,typingIgnored:true,teachingKinds:40,gpuRecoveryHint:true,classroomProgressPreserved:true,errors,network},null,2));
+    console.log(JSON.stringify({built,seed:3763093038,island:3,actualLedgeRoundTrip:!built,cactusSlopeKeyboardRoundTrip:!built,konamiActivation:true,typingIgnored:true,teachingKinds:40,gpuRecoveryHint:true,classroomProgressPreserved:true,errors,network},null,2));
   }finally{await browser?.close();await server?.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
