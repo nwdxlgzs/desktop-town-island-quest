@@ -11,7 +11,7 @@ const {pathToFileURL}=require('node:url');
     const save=(seed,completed=[])=>({version:3,routeVersion:1,seed,completed,currentLevel:0,unlocked:0,attempts:{},finishedAt:{},records:{},seconds:42,startedAt:'2026-10-20T00:00:00.000Z',graduated:false,onboardingVersion:1,sound:false,music:false,musicPreference:1,quality:normalizeQuality(),exploration:{shards:[],restored:[],species:[],sail:'cream'}});
     const minimum=level=>{const ids=level.workshops.map(w=>w.tasks[0]);for(const id of level.tasks)if(ids.length<Math.ceil(level.tasks.length*.6)&&!ids.includes(id))ids.push(id);return ids;};
     const initial=save(7,[journeyForSeed(7)[0].tasks[0]]),partial=save(18,minimum(journeyForSeed(18)[0]));partial.unlocked=1;
-    if(!built){const {createServer}=await import('vite');server=await createServer({configFile:false,server:{host:'127.0.0.1',port:0,watch:null,hmr:false}});await server.listen();}
+    if(!built){const {createServer}=await import('vite');server=await createServer({configFile:false,cacheDir:'.tmp-progress-vite',optimizeDeps:{entries:['index.html']},server:{host:'127.0.0.1',port:0,watch:null,hmr:false}});await server.listen();}
     const url=built?pathToFileURL(path.resolve('dist/index.html')).href:server.resolvedUrls.local[0];
     browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1200,height:950}}),errors=[],net=[];
     page.on('pageerror',e=>errors.push(e.message));if(built)page.on('request',request=>{if(/^https?:/.test(request.url()))net.push(request.url());});
@@ -33,14 +33,14 @@ const {pathToFileURL}=require('node:url');
     const downloadEvent=page.waitForEvent('download');await page.locator('#export-progress').click();const download=await downloadEvent;await download.saveAs('test-results/progress-export.json');const exported=JSON.parse(await fs.readFile('test-results/progress-export.json','utf8'));
     assert.equal(exported.format,'desktop-town-island-quest-progress');assert.equal(exported.progress.seed,7);assert.deepEqual(exported.progress.completed,initial.completed);
     await select({title:'学习报告',completed:1});assert.match(await page.locator('#progress-feedback').innerText(),/学习报告/);assert.equal(await page.locator('#confirm-import').count(),0);assert.deepEqual((await stored()).completed,initial.completed);
-    await select(progressFile(initial,true));assert.match(await page.locator('#progress-feedback').innerText(),/分别保存/);
+    await select({...progressFile(initial),mode:'demo'});await page.locator('#confirm-import').waitFor();assert.match(await page.locator('#progress-feedback').innerText(),/文件检查通过/);
     await restore(progressFile(partial));assert.equal((await stored()).seed,18);assert.deepEqual((await stored()).completed,partial.completed);
     assert.equal(await page.locator('#boat-marker.ready').count(),0,'60% must not trigger the full-completion boat prompt');assert.equal(await page.locator('#go-station').innerText().then(t=>t.includes('工坊')),true);
     await page.locator('#boat-marker').click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('desktop-quest-v3')).currentLevel===1);assert.equal((await stored()).unlocked,1);
     await page.locator('#station-list [data-level="0"]').click();await page.waitForFunction(()=>JSON.parse(localStorage.getItem('desktop-quest-v3')).currentLevel===0);
     await open();assert.equal(await page.locator('#current-seed').inputValue(),'18');
     await page.locator('#new-adventure summary').click();await page.locator('#new-seed').fill('1234');await page.locator('#seed-form button[type="submit"]').click();assert.equal((await stored()).seed,18,'preparing must not reset');
-    await Promise.all([page.waitForEvent('load'),page.locator('#confirm-new-adventure').click()]);await ready();assert.equal((await stored()).seed,1234);assert.equal((await stored()).completed.length,0);
+    await Promise.all([page.waitForEvent('load'),page.locator('#confirm-new-adventure').click()]);await ready();assert.equal((await stored()).seed,1234);assert.equal((await stored()).completed.length,0);assert.equal((await stored()).onboardingVersion,0);await page.locator('.onboarding-layer[data-step="0"]').waitFor();await page.locator('#onboarding-skip').click();
     await open();await restore(exported);assert.equal((await stored()).seed,7);assert.deepEqual((await stored()).completed,initial.completed);
     await open();await restore(progressFile(save(7,journeyForSeed(7)[0].tasks)));assert.equal(await page.locator('#boat-marker.ready').count(),1);assert.match(await page.locator('#go-station').innerText(),/小船/);
     await page.locator('#fullscreen').click();await page.locator('#progress-world').click();assert.equal(await page.locator('#current-seed').inputValue(),'7');await page.setViewportSize({width:390,height:850});
@@ -54,6 +54,6 @@ const {pathToFileURL}=require('node:url');
       await page.locator('#new-folder').click();await page.locator('#folder-name').fill('');await page.locator('.fm-assignment').click();assert.equal(await page.locator('#folder-name').count(),0);
     }
     assert.deepEqual(errors,[]);assert.deepEqual(net,[]);
-    console.log(JSON.stringify({built,partialTravel:true,fullOnlyBoatPrompts:true,portableRestoreAcrossSeeds:true,seededRestart:true,invalidImportsPreserveProgress:true,immersiveAndMobile:true,renameBlur:!built,errors,networkRequests:net.length},null,2));
+    console.log(JSON.stringify({built,partialTravel:true,fullOnlyBoatPrompts:true,portableRestoreAcrossSeeds:true,seededRestart:true,restartResetsOnboarding:true,invalidImportsPreserveProgress:true,immersiveAndMobile:true,renameBlur:!built,errors,networkRequests:net.length},null,2));
   }finally{await browser?.close();await server?.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

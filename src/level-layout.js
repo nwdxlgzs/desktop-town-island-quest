@@ -1,5 +1,5 @@
 import { stations, tasks } from './curriculum.js';
-import { findPath,clearSegment,terrainNavigationGrid } from './navigation.js';
+import { findPath,clearSegment,terrainNavigationGrid,createNavigator } from './navigation.js';
 import { placeLadders } from './ladder-layout.js';
 import { createShoreline, onLand, distanceToShore } from './shoreline.js';
 export { onLand } from './shoreline.js';
@@ -68,7 +68,7 @@ class LayoutPlacementError extends Error {}
 export function createLayout(level,seed) {
   // Crowded maps grow before retrying; adding missions never leaves an impossible layout.
   for(let attempt=0;attempt<10;attempt++){
-    try{return generateLayout(level,(seed+Math.imul(attempt,0x9E3779B9))>>>0,1+attempt*.1);}
+    try{return generateLayout(level,(seed+Math.imul(attempt,0x9E3779B9))>>>0,1.1*(1+attempt*.1));}
     catch(error){if(!(error instanceof LayoutPlacementError)||attempt===9)throw error;}
   }
 }
@@ -203,6 +203,15 @@ function generateLayout(level, seed,scale) {
   layout.lamps=streetLamps(layout);
   layout.obstacles.push(...layout.lamps.map(l=>({x:l.x,z:l.z,w:.35,d:.35,type:'street-lamp'})));
   obstacleIndices.delete(layout);
+  // Verify the final geometry, after roads/bridges, fences and lamps settle.
+  // Decorative ladders must never let a player descend into a disconnected pocket.
+  const blocked=(x,z)=>blockedAt(layout,x,z,playerRadius),traverse=(a,b)=>canWalkSegment(layout,a,b);
+  const access=createNavigator(blocked,layout.bounds,traverse,layout.ladders,navigationGrid);
+  layout.ladders=layout.ladders.filter(l=>[l.bottom,l.top].every(p=>access.findPath(p,layout.dock).length));
+  const finalAccess=createNavigator(blocked,layout.bounds,traverse,layout.ladders,navigationGrid);
+  for(const p of [layout.spawn,...layout.workshops.map(w=>({x:w.approach[0],z:w.approach[1]})),...layout.ladders.flatMap(l=>[l.bottom,l.top])]){
+    if(!finalAccess.findPath(p,layout.dock).length)throw new LayoutPlacementError(`No safe return route in ${level.id}`);
+  }
   // Spawn residents from the verified connected road network, never an isolated cliff.
   layout.npcSpawns={};
   const preferences=[...layout.workshops.map(w=>({key:w.id,x:w.position[0]+1.75,z:w.position[1]-.8})),...layout.villages.map((v,i)=>({key:`village-${i}`,x:v.x,z:v.z})),...layout.camps.map((c,i)=>({key:`camp-${i}`,x:c.x+1.1,z:c.z-.7}))];

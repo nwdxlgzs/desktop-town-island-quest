@@ -156,12 +156,14 @@ export function canWalkSegment(layout,from,to,{up=maxStepHeight,down=maxStepHeig
   return true;
 }
 
-export function ladderAt(layout,x,z){
+export function ladderAt(layout,x,z,radius=.8){
+  let nearest=null,distance=radius;
+  const height=walkingHeightAt(layout,x,z);
   for(const ladder of layout.ladders||[]){
     for(const [fromTop,p]of [[false,ladder.bottom],[true,ladder.top]])
-      if(Math.hypot(x-p.x,z-p.z)<.8)return {ladder,fromTop};
+      if(Math.abs(height-p.y)<.7&&Math.hypot(x-p.x,z-p.z)<distance){distance=Math.hypot(x-p.x,z-p.z);nearest={ladder,fromTop};}
   }
-  return null;
+  return nearest;
 }
 // Walking never creates a ramp through a cliff. Ladder links use a separate climb action.
 export function walkingHeightAt(layout,x,z){

@@ -26,8 +26,17 @@ test('jump ceiling is bounded from takeoff and repeated airborne checks reuse re
 });
 
 test('reported cactus slope permits the formerly blocked stair corner and keeps trunk and edge support',()=>{
-  const l=createLayout(journeyForSeed(3763093038)[2],3763093038),tree=l.trees.find(t=>t.x>8&&t.x<10),p={x:tree.x+.8,z:tree.z+.8},blocked=(x,z)=>blockedAt(l,x,z,playerRadius);
-  assert.equal(terrainCellAt(l,p.x,p.z).elevation,2);assert.equal(blocked(p.x,p.z),false,'a lower neighbour no longer blocks the full body at a stair corner');
+  const l=createLayout(journeyForSeed(3763093038)[2],3763093038),tree=l.trees.find(t=>t.x>7&&t.x<13),p={x:tree.x+.8,z:tree.z+.8},blocked=(x,z)=>blockedAt(l,x,z,playerRadius);
+  assert.ok(terrainCellAt(l,p.x,p.z).elevation>=2);assert.equal(blocked(p.x,p.z),false,'a lower neighbour no longer blocks the full body at a stair corner');
   assert.equal(blocked(tree.x,tree.z),true,'the cactus itself remains solid');
-  const from={x:tree.x+1,z:tree.z},to={x:tree.x+.8,z:tree.z+1};assert.ok(clearSegment(from,to,blocked,(a,b)=>canWalkSegment(l,a,b)),'ordinary half-steps beside the cactus remain navigable');
+  const from={x:tree.x+1,z:tree.z+.8},to={x:tree.x+.8,z:tree.z+1};assert.ok(clearSegment(from,to,blocked,(a,b)=>canWalkSegment(l,a,b)),'ordinary half-steps beside the cactus remain navigable');
+});
+
+test('a slow frame approaches a corner safely, slides along it and can immediately back out',()=>{
+  const l=layout([],[{x:0,z:0,w:1,d:3}]),move=traversal(l),start={x:-2,z:0},wall={x:-.8,z:0};
+  assert.equal(move.canMove(start,wall),false);
+  const clipped=move.advance(start,wall);assert.ok(clipped&&clipped.x>-1.12&&clipped.x<=-1.105);
+  assert.ok(clearSegment(start,clipped,(x,z)=>blockedAt(l,x,z,playerRadius)),'partial progress never enters the obstacle');
+  const slid=move.advance(clipped,{x:wall.x,z:.3});assert.ok(slid&&slid.z>.29);assert.ok(Math.abs(slid.x-clipped.x)<1e-6);
+  assert.deepEqual(move.advance(slid,{x:-2,z:.3}),{x:-2,z:.3},'moving away is always possible');
 });

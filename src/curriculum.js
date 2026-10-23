@@ -1,17 +1,10 @@
 import curriculum from './curriculum.json' with { type: 'json' };
-import adventure from './levels.json' with { type: 'json' };
+import {resolveCourse} from './course-config.js';
+import {course as adventure,courseId} from './runtime-course.js';
 import { islandShapes } from './shoreline.js';
 import { createJourney } from './journey.js';
 export const stations = curriculum.stations;
-export const tasks = { ...curriculum.tasks };
-function resolveTask(id,chain=new Set()){
-  if(tasks[id])return tasks[id];
-  const variant=adventure.variants[id];
-  if(!variant||chain.has(id))throw new Error(`Unknown or cyclic exercise template: ${id}`);
-  chain.add(id);const base=resolveTask(variant.base,chain);
-  return tasks[id]={...base,...variant,params:{...base.params,...variant.params}};
-}
-for(const id of Object.keys(adventure.variants))resolveTask(id);
+export const tasks = resolveCourse(adventure);
 export const missions=adventure.missions;
 export const biomes=adventure.biomes;
 export let levels=createJourney(adventure,0);
@@ -21,14 +14,14 @@ export const targetMinutes = adventure.targetMinutes;
 export const challengesPerMinute = adventure.challengesPerMinute;
 export const taskIds = missions.flatMap(m=>m.tasks);
 export const missionCount = missions.length;
-for(const task of Object.values(tasks))if(task.kind==='undo'){
+for(const [id,task] of Object.entries(tasks))if(task.kind==='undo'&&courseId==='default'){
   const mark=task.params.mark||(/[\u4e00-\u9fff]/.test(task.params.original)?'！':'!');
   task.params={...task.params,mark};task.instruction=`先在便签末尾输入一个 ${mark}，再按 Ctrl+Z 撤销，让便签恢复原样。`;task.objective=`输入 ${mark} → Ctrl+Z 撤销`;
 }
 for(const task of Object.values(tasks))if(task.kind==='document'){
   task.params={...task.params,tools:task.params.tools||['bold','align','list']};
 }
-for(const task of Object.values(tasks))if(task.kind==='hover'){
+for(const task of Object.values(tasks))if(task.kind==='hover'&&courseId==='default'){
   task.instruction=`将鼠标停在「${task.params.target}」上，读一下工具提示，再选择对应的说明。`;
   task.objective='停留查看提示 → 确认对应说明';task.hint='把鼠标移到图标上并停留片刻，看到提示后，再点击下方符合提示的说明。';
 }
@@ -45,6 +38,6 @@ for(const profile of adventure.landscapes){
   for(const key of ['width','depth','trees']){const r=profile.map[key];if(r.length!==2||r[0]<0||r[1]<r[0])throw new Error(`Invalid ${key} in landscape`);}
 }
 if(!adventure.islands.densities.length||adventure.islands.baseLayers[0]<1||adventure.islands.baseLayers[1]<adventure.islands.baseLayers[0])throw new Error('Invalid terrain layers or density settings');
-if(!Number.isFinite(challengesPerMinute)||challengesPerMinute<=0||missionCount<Math.ceil(targetMinutes*challengesPerMinute))throw new Error('Insufficient complete missions for the teaching budget');
+if(!Number.isFinite(challengesPerMinute)||challengesPerMinute<=0||courseId==='default'&&missionCount<Math.ceil(targetMinutes*challengesPerMinute))throw new Error('Insufficient complete missions for the teaching budget');
 export const totalXP = taskIds.reduce((sum, id) => sum + tasks[id].xp, 0);
 export const stationTasks = id => levels.flatMap(level=>level.workshops.filter(w=>w.theme===id).flatMap(w=>w.tasks));

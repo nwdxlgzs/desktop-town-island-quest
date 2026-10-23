@@ -8,7 +8,7 @@ export function installKonamiCode(target,{activate,enabled=()=>true,now=()=>perf
     const time=now();if(time-lastTime>5000)entered=[];lastTime=time;
     entered.push(event.key.toLowerCase());
     while(entered.length&&!entered.every((key,i)=>key===sequence[i]))entered.shift();
-    if(entered.length===sequence.length){entered=[];activate();}
+    if(entered.length===sequence.length){entered=[];event.preventDefault?.();event.stopPropagation?.();activate();}
   }
   target.addEventListener('keydown',keydown,{capture:true});
   return ()=>target.removeEventListener('keydown',keydown,true);

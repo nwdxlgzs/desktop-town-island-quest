@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { sealBuild } from './scripts/seal-build.js';
+import {teacherPreviewPlugin} from './scripts/teacher-preview-plugin.mjs';
 
 // Inline the generated entry and stylesheet without introducing extra build dependencies.
 function singleFile() {
@@ -29,7 +30,7 @@ function singleFile() {
 }
 
 export default defineConfig({
-  plugins: [singleFile()],
+  plugins: [teacherPreviewPlugin(),singleFile()],
   build: {
     target: 'es2020',
     assetsInlineLimit: 100000000,

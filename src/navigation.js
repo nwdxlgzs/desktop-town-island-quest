@@ -145,3 +145,16 @@ export function createNavigator(blocked,bounds,canTraverse=()=>true,ladders=[],t
     return path;
   },advance(from,point,distance){if(point.ladder)return null;return walk.advance(from,point,distance);},invalidate(){cache={};walk=createAmbientWalk(clear);},get movement(){return walk.stats;}};
 }
+
+// Reuse a proven return route while the player walks on the same clear floor.
+// Replan only after leaving that corridor, never on every movement frame.
+export function createReturnRouteMonitor(findPath,dock,clear,onChange=()=>{}){
+  let anchor=null,checked=null,stranded=false;
+  return {check(position){
+    if(checked&&Math.hypot(position.x-checked.x,position.z-checked.z)<1e-6)return !stranded;
+    const safe=!!(anchor&&clear(position,anchor))||findPath(position,dock).length>0;
+    checked={...position};if(safe)anchor={...position};
+    if(stranded!==!safe){stranded=!safe;onChange(stranded);}
+    return safe;
+  },reset(){anchor=checked=null;if(stranded){stranded=false;onChange(false);}},get stranded(){return stranded;}};
+}

@@ -5,7 +5,7 @@ const fs=require('node:fs/promises');
 (async()=>{
   let browser,server;
   try{
-    const {createServer}=await import('vite');server=await createServer({configFile:false,server:{host:'127.0.0.1',port:0,watch:null,hmr:false}});await server.listen();
+    const {createServer}=await import('vite');server=await createServer({configFile:false,cacheDir:'.tmp-auto-teaching-vite',optimizeDeps:{entries:['index.html']},server:{host:'127.0.0.1',port:0,watch:null,hmr:false}});await server.listen();
     browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1200,height:1000}}),errors=[];
     page.on('pageerror',e=>errors.push(e.message));
     await page.route('**/__auto.html',route=>route.fulfill({contentType:'text/html',body:`<!doctype html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="/src/style.css"><link rel="stylesheet" href="/src/adventure.css"></head><body style="display:block"><main class="lesson-main"><div id="exercise" class="exercise"></div></main><script type="module">import {openExerciseDemo} from '/src/exercise-demo.js';import {mountExercise} from '/src/exercises.js';import {tasks,taskIds} from '/src/curriculum.js';window.autoTest={tasks,taskIds,open(id,options={}){this.demo?.dispose();return this.demo=openExerciseDemo(id,{autoplay:false,timing:0,...options});},mount(id){this.cleanup?.();this.success=0;this.cleanup=mountExercise(id,document.querySelector('#exercise'),{success:()=>{this.success++;return true;},feedback(){},sound(){},capture:()=>''});}};</script></body></html>`}));

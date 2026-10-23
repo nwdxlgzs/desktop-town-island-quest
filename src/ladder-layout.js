@@ -1,5 +1,6 @@
-import { terrainTileSize,elevationAt,waterAt } from './terrain.js';
+import { terrainTileSize,elevationAt,waterAt,playerRadius,canWalkSegment } from './terrain.js';
 import { blockedAt,onLand } from './level-layout.js';
+import { clearSegment } from './navigation.js';
 
 export function placeLadders(layout){
   layout.ladders=[];
@@ -12,11 +13,18 @@ export function placeLadders(layout){
       const b={x:a.x+dx*size,z:a.z+dz*size};b.y=elevationAt(layout,b.x,b.z);
       const height=Math.abs(a.y-b.y);if(height<1||height>8||blockedAt(layout,b.x,b.z,.55)||waterAt(layout,b.x,b.z,.7))continue;
       const bottom=a.y<b.y?a:b,top=a.y<b.y?b:a;
-      // A longer landing reaches the flat centre of both voxels, not a cliff edge.
-      const direction={x:(top.x-bottom.x)/size,z:(top.z-bottom.z)/size},foot={x:bottom.x-direction.x*.35,z:bottom.z-direction.z*.35,y:bottom.y},head={x:top.x+direction.x*.35,z:top.z+direction.z*.35,y:top.y};
-      if(!onLand(layout,foot.x,foot.z,.9)||!onLand(layout,head.x,head.z,.9))continue;
-      if(blockedAt(layout,foot.x,foot.z,.5)||blockedAt(layout,head.x,head.z,.5))continue;
-      if(elevationAt(layout,foot.x,foot.z)!==foot.y||elevationAt(layout,head.x,head.z)!==head.y)continue;
+      // A landing must support the same whole body and safety margin as walking.
+      // Extending .35 into a river bank can leave a standable but inescapable point.
+      const direction={x:(top.x-bottom.x)/size,z:(top.z-bottom.z)/size};
+      const landing=(center,sign)=>{
+        for(const offset of [.35,.2,0]){
+          const p={x:center.x+direction.x*offset*sign,z:center.z+direction.z*offset*sign,y:center.y};
+          if(onLand(layout,p.x,p.z,.9)&&elevationAt(layout,p.x,p.z)===p.y&&clearSegment(p,center,(x,z)=>blockedAt(layout,x,z,playerRadius),(a,b)=>canWalkSegment(layout,a,b)))return p;
+        }
+        return null;
+      };
+      const foot=landing(bottom,-1),head=landing(top,1);
+      if(!foot||!head)continue;
       const face={x:(bottom.x+top.x)/2,z:(bottom.z+top.z)/2},side={x:direction.z,z:-direction.x};
       let supported=true;
       for(const offset of [-.55,0,.55])for(const [depth,expected]of [[-.7,bottom.y],[.4,top.y]]){

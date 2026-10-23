@@ -41,12 +41,13 @@ test('portable progress preserves the seed, partial itinerary, records, collecti
   assert.deepEqual(journeyForSeed(restored.seed),route);
 });
 
-test('bad files, reports, impossible itineraries and cross-mode imports are rejected',()=>{
+test('bad files, reports, impossible itineraries and another course are rejected; old demo files remain readable',()=>{
   for(const text of ['no JSON','null','{}',JSON.stringify({title:'学习报告',completed:10})])assert.throws(()=>readProgress(text));
   assert.throws(()=>readProgress(' '.repeat(maxProgressBytes+1)),/过大/);
   const changed=change=>{const save=snapshot();change(save);return encode(save);};
   for(const change of [s=>s.seed=-1,s=>s.seed=4294967296,s=>s.seed=1.5,s=>s.currentLevel=1,s=>s.unlocked=2,s=>s.completed=['not-a-task'],s=>s.completed=[taskIds[0],taskIds[0]],s=>s.seconds=-1,s=>s.records={__bad:{x:1}},s=>s.attempts[taskIds[0]]=Infinity,s=>s.exploration.shards=['fake-island'],s=>s.startedAt='wrong'])assert.throws(()=>readProgress(changed(change)));
-  const demo=JSON.stringify(progressFile(snapshot(),true));assert.throws(()=>readProgress(demo),/分别保存/);assert.equal(readProgress(demo,true).seed,7);assert.throws(()=>readProgress(encode(snapshot()),true),/分别保存/);
+  const oldDemo={...progressFile(snapshot()),mode:'demo'};assert.equal(readProgress(JSON.stringify(oldDemo)).seed,7);assert.equal(readProgress(encode(snapshot()),true).seed,7);
+  const other={...progressFile(snapshot()),courseId:'another'};assert.throws(()=>readProgress(JSON.stringify(other)),/另一套课程/);
 });
 
 test('seed input accepts the entire uint32 range and rejects ambiguous values',()=>{

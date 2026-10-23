@@ -4,12 +4,13 @@ const fs=require('node:fs/promises');
 
 // Four tiny fixed palette samples, a few still frames; no generated maps or FPS load.
 (async()=>{
-  const browser=await chromium.launch({headless:true});
+  let server;const browser=await chromium.launch({headless:true});
   try{
+    if(!process.env.QUEST_URL){const {createServer}=await import('vite');server=await createServer({configFile:false,cacheDir:'.tmp-terrain-vite',optimizeDeps:{entries:['index.html']},server:{host:'127.0.0.1',port:0,watch:null,hmr:false}});await server.listen();}
     const page=await browser.newPage({viewport:{width:900,height:650}}),errors=[];
     page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text().slice(0,2500));});
     await page.route('**/__terrain-detail.html',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html><body style="margin:0"></body></html>'}));
-    await page.goto((process.env.QUEST_URL||'http://127.0.0.1:5174/')+'__terrain-detail.html');
+    await page.goto((process.env.QUEST_URL||server.resolvedUrls.local[0])+'__terrain-detail.html');
     const result=await page.evaluate(async()=>{
       const THREE=await import('/node_modules/three/build/three.module.js'),{buildTerrainMesh}=await import('/src/terrain-mesh.js'),{setTerrainLines}=await import('/src/terrain-style.js'),{installVoxelLighting}=await import('/src/voxel-lighting.js'),{bakeIslandShadows}=await import('/src/baked-shadows.js'),{createAntialias}=await import('/src/antialias.js'),{createStaticFrameCache}=await import('/src/static-frame-cache.js');
       const config=await (await fetch('/src/levels.json')).json(),renderer=new THREE.WebGLRenderer({antialias:false});renderer.setSize(900,650);renderer.setPixelRatio(1.5);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.info.autoReset=false;document.body.append(renderer.domElement);
@@ -46,7 +47,9 @@ const fs=require('node:fs/promises');
       cache.dispose();aa.dispose();sun.shadow.dispose();samples.forEach(s=>{s.mesh.geometry.dispose();s.mesh.material.dispose();});renderer.dispose();return {plain,detailed,changed,shadowChanged,water,seamColors,reused,images:{before,after,baked,shadow}};
     });
     assert.deepEqual(result.plain,result.detailed,'brick detail adds no objects, triangles, vertices or draws');assert.ok(result.changed>1500);assert.ok(result.shadowChanged>1500);assert.ok(result.water.every(w=>w.difference<=3),JSON.stringify(result.water));assert.deepEqual(result.reused,{hits:1,captures:0});assert.deepEqual(errors,[]);
-    const color=id=>result.seamColors.find(c=>c.id===id).ink;for(const c of result.seamColors)assert.ok(c.darkening>15,JSON.stringify(c));assert.ok(color('meadow')[1]>color('meadow')[0]&&color('meadow')[1]>color('meadow')[2]);assert.ok(color('desert')[0]>color('desert')[2]+15);assert.ok(color('cyber')[2]>color('cyber')[0]+10);
     await fs.mkdir('test-results',{recursive:true});for(const [name,data]of Object.entries(result.images))await fs.writeFile('test-results/terrain-'+name+'.png',Buffer.from(data.split(',')[1],'base64'));delete result.images;await fs.writeFile('test-results/terrain-detail.json',JSON.stringify({...result,errors},null,2));console.log(JSON.stringify({...result,errors},null,2));
-  }finally{await browser.close();}
+    // The off image now removes bevel lighting as well as seams. The delta
+    // includes that real slope shading; pigments must still avoid black grout.
+    const color=id=>result.seamColors.find(c=>c.id===id).ink;for(const c of result.seamColors)assert.ok(c.darkening>3&&c.darkening<120&&Math.min(...c.ink)>90,'relief retains its local palette: '+JSON.stringify(c));assert.ok(color('meadow')[1]>color('meadow')[0]&&color('meadow')[1]>color('meadow')[2]);assert.ok(color('desert')[0]>color('desert')[2]+15);assert.ok(color('cyber')[2]>color('cyber')[0]+10);
+  }finally{await browser.close();await server?.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

@@ -21,3 +21,8 @@ test('typing, modified keys, composition, stale fragments and disabled sessions 
 test('held key autorepeat does not supply missing presses or disturb a correct sequence',()=>{
   const f=fixture();f.send(['ArrowUp']);f.send(['ArrowUp'],{repeat:true});f.send(code.slice(2));assert.equal(f.activations,0);for(const key of code){f.send([key]);f.send([key],{repeat:true});}assert.equal(f.activations,1);
 });
+
+test('the activating A key is consumed so it cannot start moving the character',()=>{
+  const f=fixture();let prevented=0,stopped=0;f.send(code.slice(0,-1),{preventDefault(){prevented++;},stopPropagation(){stopped++;}});assert.equal(prevented,0);assert.equal(stopped,0);
+  f.send(['a'],{preventDefault(){prevented++;},stopPropagation(){stopped++;}});assert.equal(f.activations,1);assert.equal(prevented,1);assert.equal(stopped,1);
+});

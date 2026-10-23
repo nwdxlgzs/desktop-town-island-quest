@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
-import {blockedAt} from '../src/level-layout.js';
+import {blockedAt,createLayout} from '../src/level-layout.js';
+import {journeyForSeed} from '../src/curriculum.js';
 import {canWalkSegment,playerRadius,terrainTopOffset,footRadius} from '../src/terrain.js';
 
 // Actual input, planning and player loop, with no browser, GPU or map generator.
@@ -36,10 +37,10 @@ test('actual movement rounds trees diagonally and exploration searches nearby re
   function key(type,key,code=key){const event=new Event(type,{cancelable:true});Object.defineProperties(event,{key:{value:key},code:{value:code}});window.dispatchEvent(event);}
   function click(x,y,z){const p=world.screenPoint(x,y,z),event=new Event('pointerdown',{cancelable:true});for(const [key,value]of Object.entries({clientX:p.x,clientY:p.y,button:0,pointerId:1}))Object.defineProperty(event,key,{value});renderer.domElement.dispatchEvent(event);}
   function layout(spawn){return {seed:1,width:16,depth:16,shoreline:{radii:Array(32).fill(1)},bounds:{minX:-7,maxX:7,minZ:-7,maxZ:7},shoreX:8,dock:{x:6,z:0},boat:{x:10,z:0},spawn,level:{id:'fixed-tree',map:{npcLimit:0},npc:{radius:2,speed:.65}},workshops:[],npcSpawns:{},obstacles:[{x:0,z:0,w:.5,d:.5,type:'tree'}],roads:[],ladders:[],terraces:[],trees:[{x:0,z:0,scale:1}],mountains:[],villages:[],camps:[],reefs:[],exploration:[],wildlife:[]};}
-  let world;const notices=[],explored=[];
+  let world;const notices=[],explored=[],recovery=[];
   try{
     const {createWorld}=await import(runtime.href+'?'+Date.now()),map=layout({x:-3,z:-2});
-    world=createWorld(container,{layout:map,onInteract(){},onBoard(){},onReady(){},onError(error){throw error;},onTravelState(){},onExplore:item=>explored.push(item.id),onNotice:text=>notices.push(text),isPaused:()=>false});
+    world=createWorld(container,{layout:map,onInteract(){},onBoard(){},onReady(){},onError(error){throw error;},onTravelState(){},onExplore:item=>explored.push(item.id),onNotice:text=>notices.push(text),onStranded:value=>recovery.push(value),isPaused:()=>false});
     for(let i=0;i<4;i++)step();const start=world.getDebugSnapshot().position;
     key('keydown','d');key('keydown','s');for(let i=0;i<5;i++)step();key('keyup','d');key('keyup','s');
     const manual=world.getDebugSnapshot().position;assert.ok(manual.x-start.x>.2&&manual.z-start.z>.2,'two held direction keys move both axes');
@@ -89,6 +90,25 @@ test('actual movement rounds trees diagonally and exploration searches nearby re
     key('keydown',' ','Space');key('keyup',' ','Space');key('keydown','w');for(let i=0;i<4;i++)step();key('keyup','w');assert.ok(world.getDebugSnapshot().position.z<1.3,'space grants a temporary extra-height crossing to a walk-connected landing');
     for(let i=0;i<30;i++)step();assert.equal(world.getDebugSnapshot().motion.jump,0);key('keydown','s');for(let i=0;i<6;i++)step();key('keyup','s');assert.ok(world.getDebugSnapshot().position.z>1.3,'the same limited descent works without jumping');
     world.loadLevel(steps);for(let i=0;i<4;i++)step();key('keydown',' ','Space');key('keyup',' ','Space');for(let i=0;i<30;i++)step();key('keydown','w');for(let i=0;i<8;i++)step();key('keyup','w');assert.ok(world.getDebugSnapshot().position.z>=1.3,'expired jumps no longer grant step clearance');
+    // Actual climb execution at the user's seed, including the former river-bank traps.
+    const reported=createLayout(journeyForSeed(734619820)[1],734619820);
+    for(const ladder of reported.ladders){
+      world.loadLevel({...reported,spawn:{...ladder.top}});for(let i=0;i<4;i++)step();
+      for(const landing of [ladder.bottom,ladder.top]){
+        assert.equal(world.useLadder(ladder.id),true);
+        for(let i=0;i<300&&(world.getDebugSnapshot().routeRemaining||world.getDebugSnapshot().motion.climbing);i++)step();
+        const actual=world.getDebugSnapshot();assert.ok(Math.hypot(actual.position.x-landing.x,actual.position.z-landing.z)<1e-5);assert.equal(actual.motion.climbing,false);assert.equal(actual.stranded,false);
+      }
+      world.walkTo(reported.dock);for(let i=0;i<1500&&world.getDebugSnapshot().routeRemaining;i++)step();
+      const home=world.getDebugSnapshot();assert.ok(Math.hypot(home.position.x-reported.dock.x,home.position.z-reported.dock.z)<1e-5,'actual movement returns to the dock');
+    }
+    // A legacy invalid ladder simulates an unexpected trap after generation.
+    const broken={...voxel,dock:{x:0,z:0},ladders:[{id:'old-unsafe',bottom:{x:1.6,z:0,y:0},top:{x:1,z:0,y:4},width:1.3,height:4}]};
+    world.loadLevel(broken);for(let i=0;i<4;i++)step();assert.equal(world.useLadder('old-unsafe'),true);
+    for(let i=0;i<300&&(world.getDebugSnapshot().routeRemaining||world.getDebugSnapshot().motion.climbing);i++)step();
+    assert.equal(world.getDebugSnapshot().stranded,true);assert.equal(recovery.at(-1),true,'failed return path exposes the recovery action');
+    world.goToBoat();assert.match(notices.at(-1),/回到本岛出发点/);
+    assert.equal(world.resetPosition(),true);assert.equal(recovery.at(-1),false);assert.equal(world.getDebugSnapshot().stranded,false);assert.ok(Math.hypot(world.getDebugSnapshot().position.x,world.getDebugSnapshot().position.z)<1e-6);notices.length=0;
     // Slow presentation must never change the default user's chosen visuals.
     // A renderer stub verifies the real scheduling path, not actual GPU FPS.
     world.setQuality({preset:'auto',resolution:'1.5',maxFps:30});

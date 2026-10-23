@@ -53,7 +53,7 @@ export function buildIsland(layout, cube, material) {
   // Raycasting works on invisible materials; click volumes never need a GPU draw.
   const hitMaterial=new THREE.MeshBasicMaterial({visible:false,side:THREE.DoubleSide});
   const surfacePositions=[],surfaceColors=[],surfaceTint=new THREE.Color(),groundReceivers=createGroundReceivers();
-  function groundPatch(x,z,w,d,color){
+  function groundPatch(x,z,w,d,color,raised=false){
     const size=terrainTileSize,ox=-layout.width/2,oz=-layout.depth/2;
     for(let ix=Math.floor((x-w/2-ox)/size);ix<=Math.floor((x+w/2-ox)/size);ix++)for(let iz=Math.floor((z-d/2-oz)/size);iz<=Math.floor((z+d/2-oz)/size);iz++){
       const x0=Math.max(x-w/2,ox+ix*size),x1=Math.min(x+w/2,ox+(ix+1)*size),z0=Math.max(z-d/2,oz+iz*size),z1=Math.min(z+d/2,oz+(iz+1)*size);
@@ -61,6 +61,9 @@ export function buildIsland(layout, cube, material) {
       const y=.13+elevationAt(layout,(x0+x1)/2,(z0+z1)/2);surfaceTint.set(color);
       groundReceivers.add((x0+x1)/2,(z0+z1)/2,x1-x0,z1-z0,y);
       for(const [px,pz] of [[x0,z0],[x0,z1],[x1,z1],[x0,z0],[x1,z1],[x1,z0]]){surfacePositions.push(px,y,pz);surfaceColors.push(surfaceTint.r,surfaceTint.g,surfaceTint.b);}
+      if(raised){const side=surfaceTint.clone().multiplyScalar(.88),low=y-.045;
+        for(const [a,b]of [[[x0,z0],[x0,z1]],[[x0,z1],[x1,z1]],[[x1,z1],[x1,z0]],[[x1,z0],[x0,z0]]])for(const [px,py,pz]of [[a[0],low,a[1]],[a[0],y,a[1]],[b[0],y,b[1]],[a[0],low,a[1]],[b[0],y,b[1]],[b[0],low,b[1]]]){surfacePositions.push(px,py,pz);surfaceColors.push(side.r,side.g,side.b);}
+      }
     }
   }
   function occlude(build){
@@ -124,7 +127,8 @@ export function buildIsland(layout, cube, material) {
     if(layout.workshops.some(w=>Math.abs(x-w.position[0])<2.9&&Math.abs(z-w.position[1])<2.9))continue;
     if((layout.ladders||[]).some(l=>Math.hypot(x-(l.bottom.x+l.top.x)/2,z-(l.bottom.z+l.top.z)/2)<1.5))continue;
     const wet=waterAt(layout,x,z);
-    groundPatch(x,z,paveSize,paveSize,wet?'#d4af7d':'#ecdfbd');
+    const alternate=(Math.round(x/paveSize)+Math.round(z/paveSize))%3===0;
+    groundPatch(x,z,paveSize-.035,paveSize-.035,wet?'#d4af7d':alternate?'#e5d6b4':'#f0e3c7',true);
   }
   for(const l of layout.ladders||[])occlude(()=>{
     buildElevation=0;const a=l.bottom,b=l.top,{direction,rail}=ladderFrame(l),side={x:direction.z,z:-direction.x};
@@ -251,7 +255,22 @@ export function buildIsland(layout, cube, material) {
     if(biome?.id==='cherry'&&animated.filter(a=>a.type==='petal').length<8){const petal=box(t.x+.7,2.4*t.scale,t.z+.4,.14,.035,.13,p.leaf[1],root);animated.push({object:petal,type:'petal',base:petal.position.y,x:t.x+.7,seed:rand()*6});}
   });
   buildElevation=0;
-  for(let i=0;i<Math.min(180,w*d/18);i++){const x=(rand()*2-1)*(w/2-.8),z=(rand()*2-1)*(d/2-.8);if(!onLand(layout,x,z,1)||waterAt(layout,x,z)||nearRoad(layout,{x,z},1.2)||layout.obstacles.some(o=>Math.abs(x-o.x)<o.w/2+.5&&Math.abs(z-o.z)<o.d/2+.5)||layout.workshops.some(s=>Math.abs(x-s.position[0])<3.5&&Math.abs(z-s.position[1])<3.8))continue;const y=elevationAt(layout,x,z);if(i%4===0){box(x,y+.23,z,.8,.5,.65,'#9eaf98');box(x+.2,y+.48,z-.1,.45,.26,.42,'#bac5ab');}else{box(x,y+.18,z,.1,.28,.1,'#719b62');box(x,y+.34,z,.24,.15,.24,i%3?'#f5d17c':'#eaae8e');}}
+  // Decoration stays in the existing static batch and never enters obstacles.
+  // Keep it away from routes, controls, ladder landings and workshop worktops.
+  const decoration=[];
+  for(let i=0;i<Math.min(220,w*d/13);i++){
+    const x=(rand()*2-1)*(w/2-.8),z=(rand()*2-1)*(d/2-.8);
+    if(!onLand(layout,x,z,1)||waterAt(layout,x,z,.5)||nearRoad(layout,{x,z},1.35)||layout.obstacles.some(o=>Math.abs(x-o.x)<o.w/2+.7&&Math.abs(z-o.z)<o.d/2+.7)||layout.workshops.some(s=>Math.abs(x-s.position[0])<3.8&&Math.abs(z-s.position[1])<4.1)||(layout.ladders||[]).some(l=>[l.top,l.bottom].some(p=>Math.hypot(x-p.x,z-p.z)<1.5)))continue;
+    const y=elevationAt(layout,x,z),arid=['cactus','basalt'].includes(biome?.flora),snow=biome?.id==='snow';
+    if(i%3===0){
+      const s=.7+rand()*.35,leaf=arid?p.trunk:p.leaf?.[0]||'#7ead70',light=snow?'#e6eddf':p.leaf?.[1]||'#9abb83';
+      box(x,y+.2*s,z,.85*s,.3*s,.65*s,leaf);box(x-.18*s,y+.34*s,z-.08*s,.42*s,.25*s,.43*s,light);box(x+.28*s,y+.27*s,z+.12*s,.4*s,.22*s,.42*s,p.leaf?.[2]||leaf);
+      if(!arid&&!snow){box(x+.13*s,y+.43*s,z+.08*s,.09,.09,.09,p.accent);box(x-.3*s,y+.41*s,z-.12*s,.08,.08,.08,p.accent);}
+      decoration.push({x,z,type:'bush',collision:false});
+    }else if(i%7===0){box(x,y+.18,z,.65,.32,.5,p.rock[1]);box(x+.16,y+.36,z-.08,.32,.15,.3,p.rock[2]);decoration.push({x,z,type:'pebble',collision:false});}
+    else{box(x,y+.18,z,.08,.24,.08,p.leaf?.[2]||'#719b62');box(x,y+.32,z,.22,.12,.22,p.accent);box(x+.12,y+.15,z,.17,.06,.08,p.leaf?.[1]||'#91bb7d');decoration.push({x,z,type:'flower',collision:false});}
+  }
+  root.userData.decoration=decoration;
   for(const item of [...(layout.exploration||[]),...(layout.wildlife||[])]){
     buildElevation=0;
     const object=item.type==='animal'?createWildlife(item.species,cube):new THREE.Group(),y=elevationAt(layout,item.x,item.z)+(item.type==='animal'?.08+(object.userData.flying?.65:0):.2);

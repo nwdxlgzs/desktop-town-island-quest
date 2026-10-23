@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {levels,configureJourney,journeyForSeed} from '../src/curriculum.js';
 import {createLayout,blockedAt,onLand} from '../src/level-layout.js';
-import {findPath,clearSegment,createNavigator,terrainNavigationGrid} from '../src/navigation.js';
-import {elevationAt,walkingHeightAt,canWalkSegment,maxStepHeight,playerRadius} from '../src/terrain.js';
+import {findPath,clearSegment,createNavigator,terrainNavigationGrid,createReturnRouteMonitor} from '../src/navigation.js';
+import {elevationAt,walkingHeightAt,canWalkSegment,maxStepHeight,playerRadius,ladderAt} from '../src/terrain.js';
 import {createLadderClimb,tickLadderClimb,ladderFrame} from '../src/ladder-motion.js';
 
 test('three changed-generator samples have reachable workshops, layered shores and legal routes',()=>{
@@ -50,13 +50,39 @@ test('vertical ladder links retain their landings without making cliffs walkable
 
 test('reported seed 3763093038 island 3 connects the two-mountain ledge and both ladder directions',()=>{
   const seed=3763093038,level=journeyForSeed(seed)[2],layout=createLayout(level,seed);assert.equal(level.name,'山林探索岛');assert.equal(layout.mountains.length,2);
-  const blocked=(x,z)=>blockedAt(layout,x,z,playerRadius),traverse=(a,b)=>canWalkSegment(layout,a,b),ledge={x:4.25,z:12.25};
+  const blocked=(x,z)=>blockedAt(layout,x,z,playerRadius),traverse=(a,b)=>canWalkSegment(layout,a,b),ledge={...layout.ladders[0].top};
   const nav=createNavigator(blocked,layout.bounds,traverse,layout.ladders,terrainNavigationGrid(layout));
   for(const [from,to]of [[layout.spawn,ledge],[ledge,layout.spawn],[layout.spawn,layout.ladders[0].bottom],[layout.ladders[0].bottom,layout.spawn]]){
     const path=nav.findPath(from,to);assert.ok(path.length);assert.ok(path.some(p=>p.ladder),'the route uses real cliff ladders');let previous=from;
     for(const p of path){if(p.ladder){const l=layout.ladders.find(l=>l.id===p.ladder);assert.ok(l);const entry=p.fromTop?l.top:l.bottom,exit=p.fromTop?l.bottom:l.top;assert.ok(Math.hypot(previous.x-entry.x,previous.z-entry.z)<1e-6);assert.ok(Math.hypot(p.x-exit.x,p.z-exit.z)<1e-6);}else assert.ok(clearSegment(previous,p,blocked,traverse),'every walk segment retains full body clearance');previous=p;}
     assert.ok(Math.hypot(path.at(-1).x-to.x,path.at(-1).z-to.z)<1e-6);
   }
+});
+
+test('reported seed 734619820 island 2 has safe ladder exits and a return route from every landing',()=>{
+  const seed=734619820,l=createLayout(journeyForSeed(seed)[1],seed),blocked=(x,z)=>blockedAt(l,x,z,playerRadius),traverse=(a,b)=>canWalkSegment(l,a,b);
+  const nav=createNavigator(blocked,l.bounds,traverse,l.ladders,terrainNavigationGrid(l));
+  assert.equal(l.ladders.length,5,'repair the landings without hiding the reported ladders');
+  for(const ladder of l.ladders){
+    for(const p of [ladder.bottom,ladder.top])assert.ok(clearSegment(p,p,blocked,traverse),'landing meets the full runtime clearance');
+    for(const [from,to]of [[ladder.bottom,ladder.top],[ladder.top,ladder.bottom],[ladder.bottom,l.dock],[ladder.top,l.dock],[l.dock,ladder.bottom],[l.dock,ladder.top]]){
+      const path=nav.findPath(from,to);assert.ok(path.length,`${ladder.id} must work in both directions`);
+      let previous=from;for(const p of path){assert.ok(p.ladder||clearSegment(previous,p,blocked,traverse));previous=p;}
+    }
+    assert.equal(ladderAt(l,ladder.bottom.x,ladder.bottom.z)?.fromTop,false);
+    assert.equal(ladderAt(l,ladder.top.x,ladder.top.z)?.fromTop,true);
+  }
+});
+
+test('return monitoring offers recovery only for disconnected positions and reuses clear return corridors',()=>{
+  const dock={x:-3,z:0},blocked=(x,z)=>Math.abs(x)<.5,bounds={minX:-5,maxX:5,minZ:-5,maxZ:5},events=[];let searches=0;
+  const monitor=createReturnRouteMonitor((a,b)=>{searches++;return findPath(a,b,blocked,bounds);},dock,(a,b)=>clearSegment(a,b,blocked),value=>events.push(value));
+  assert.equal(monitor.check({x:-2,z:1}),true);assert.equal(searches,1);
+  assert.equal(monitor.check({x:-2,z:2}),true);assert.equal(searches,1,'ordinary movement reuses the known return path');
+  assert.equal(monitor.check({x:2,z:2}),false);assert.deepEqual(events,[true]);
+  for(let i=0;i<30;i++)assert.equal(monitor.check({x:2,z:2}),false);assert.equal(searches,2,'standing still never repeats an expensive failed search');
+  assert.equal(monitor.check({x:-2,z:1}),true);assert.deepEqual(events,[true,false]);
+  monitor.check({x:2,z:2});monitor.reset();assert.equal(monitor.stranded,false);assert.deepEqual(events,[true,false,true,false]);
 });
 
 test('exact corner waypoints remain traversable at runtime and unreachable endpoints fail explicitly',()=>{

@@ -12,12 +12,14 @@ export function createPracticeFiles(names){
   function descendant(id,parent){while(parent){if(parent===id)return true;parent=entries.get(parent)?.parent;}return false;}
   function transfer(ids,parent,copy=false){
     if(entries.get(parent)?.type!=='folder')return '请打开一个文件夹再粘贴。';
-    const chosen=[...new Set(ids)].map(id=>entries.get(id));
+    let chosen=[...new Set(ids)].map(id=>entries.get(id));
     if(!chosen.length||chosen.some(e=>!e||e.id==='root'))return '先选择需要处理的文件。';
-    if(chosen.some(e=>e.type==='folder'))return '这个练习先移动或复制文件，文件夹用于存放资料。';
     if(chosen.some(e=>descendant(e.id,parent)))return '不能把项目放进它自己。';
+    chosen=chosen.filter(e=>!chosen.some(other=>e!==other&&descendant(other.id,e.parent)));
+    if(new Set(chosen.map(e=>e.name.toLocaleLowerCase())).size!==chosen.length)return '所选项目有同名内容，请分开处理。';
     if(chosen.some(e=>!unique(parent,e.name,copy?null:e.id)))return '目标文件夹中已有同名文件，原有内容已保留。';
-    for(const item of chosen){if(copy){const id=`copy-${serial++}`;entries.set(id,{...item,id,parent});}else item.parent=parent;}
+    function duplicate(item,dest){const children=list(item.id),id=`copy-${serial++}`;entries.set(id,{...item,id,parent:dest});for(const child of children)duplicate(child,id);}
+    for(const item of chosen){if(copy)duplicate(item,parent);else item.parent=parent;}
     return null;
   }
   function remove(ids){for(const id of ids)if(id!=='root'&&entries.has(id)){for(const child of list(id))remove([child.id]);entries.delete(id);}}

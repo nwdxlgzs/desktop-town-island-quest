@@ -1,32 +1,34 @@
-import { taskIds, tasks, stations, levels, biomes, totalXP, stationTasks, targetMinutes, challengesPerMinute, missionCount, configureJourney } from './curriculum.js';
+import { taskIds, tasks, stations, levels, biomes, totalXP, stationTasks, targetMinutes, challengesPerMinute, missionCount, configureJourney, journeyForSeed } from './curriculum.js';
 import { normalizeQuality,migrateQuality } from './quality.js';
 import { useSessionStep } from './session-flow.js';
 import { islandProgress,unlockedThrough } from './progress-rules.js';
 import { randomSeed,parseSeed,progressFile,readProgress } from './progress-file.js';
-const KEY = 'desktop-quest-v3';
-export const preview=globalThis.location?.hash==='#BYPASS';
-const saveKey=preview?`${KEY}-demo`:KEY;
+import {courseId} from './runtime-course.js';
+const KEY = 'desktop-quest-v3'+(courseId==='default'?'':`-course-${courseId}`);
+const saveKey=KEY;
 function prepareProgress(result){
-  if(preview){
-    result.completed=[...taskIds];result.unlocked=levels.length-1;result.onboardingVersion=1;result.graduated=true;
+  if(result.unlockedMode===true){
+    const route=journeyForSeed(result.seed);
+    result.unlockedMode=true;
+    result.completed=[...taskIds];result.unlocked=route.length-1;result.graduated=true;
     // Discovery IDs are deterministic; unlocking a route must not generate
     // every island. Keep the chosen sail while granting every collection.
-    result.exploration.shards=levels.flatMap(level=>Array.from({length:3},(_,i)=>`${level.id}:shard-${i}`));
-    result.exploration.restored=levels.map(level=>level.id);
+    result.exploration.shards=route.flatMap(level=>Array.from({length:3},(_,i)=>`${level.id}:shard-${i}`));
+    result.exploration.restored=route.map(level=>level.id);
     result.exploration.species=[...new Set(biomes.flatMap(b=>b.fauna||['兔子','小鸟']))];
   }
   return result;
 }
-globalThis.addEventListener?.('hashchange',()=>{if((globalThis.location?.hash==='#BYPASS')!==preview)globalThis.location.reload();});
 const fresh = () => ({version:3, routeVersion:1, onboardingVersion:0, seed:randomSeed(), currentLevel:0, unlocked:0, graduated:false, completed:[], attempts:{}, finishedAt:{}, sound:true, music:false, musicPreference:1, quality:normalizeQuality(),exploration:{shards:[],restored:[],species:[],sail:'cream'}, seconds:0, records:{}, startedAt:new Date().toISOString()});
 export let storageAvailable = true;
 export const state = (()=>{
   try {
-    const raw = JSON.parse(localStorage.getItem(saveKey) || localStorage.getItem(KEY) || localStorage.getItem('desktop-quest-v2') || localStorage.getItem('desktop-quest-v1') || 'null');
+    const raw = JSON.parse(localStorage.getItem(saveKey) || (courseId==='default'?(localStorage.getItem('desktop-quest-v2')||localStorage.getItem('desktop-quest-v1')):null) || 'null');
     const result = fresh();
     if(raw&&Number.isInteger(raw.seed))result.seed=raw.seed>>>0;
     configureJourney(result.seed);
     if (!raw || ![1,2,3].includes(raw.version)) return prepareProgress(result);
+    if(raw.unlockedMode===true)result.unlockedMode=true;
     result.completed = [...new Set((Array.isArray(raw.completed)?raw.completed:[]).filter(id=>taskIds.includes(id)))];
     for (const name of ['attempts','finishedAt','records']) if(raw[name] && typeof raw[name]==='object' && !Array.isArray(raw[name])) result[name]=raw[name];
     if(typeof raw.sound==='boolean') result.sound=raw.sound;
@@ -56,6 +58,8 @@ export function persist() {
   try {localStorage.setItem(saveKey,JSON.stringify(state));return true;}
   catch {storageAvailable=false;return false;}
 }
+if(state.unlockedMode)persist();
+export function unlockAllContent(){state.unlockedMode=true;prepareProgress(state);return persist();}
 export const completed = id => state.completed.includes(id);
 export function collectDiscovery(item){
   const key=item.type==='shard'?'shards':'species',value=item.type==='shard'?item.id:item.species;
@@ -84,10 +88,10 @@ export function visitLevel(index,step) {
   state.currentLevel=index;state.unlocked=Math.max(state.unlocked,index);persist();return true;
 }
 export function recordAttempt(id){state.attempts[id]=(Number(state.attempts[id])||0)+1;persist();}
-export function resetState(seed=randomSeed()){seed=parseSeed(seed);const sound=state.sound,music=state.music,quality=state.quality,onboardingVersion=state.onboardingVersion;Object.keys(state).forEach(k=>delete state[k]);Object.assign(state,fresh(),{seed,sound,music,quality,onboardingVersion});configureJourney(state.seed);prepareProgress(state);persist();}
-export const exportProgress=()=>progressFile(state,preview);
+export function resetState(seed=randomSeed()){seed=parseSeed(seed);const {sound,music,quality}=state;Object.keys(state).forEach(k=>delete state[k]);Object.assign(state,fresh(),{seed,sound,music,quality});configureJourney(state.seed);persist();}
+export const exportProgress=()=>progressFile(state);
 export function importProgress(text){
-  const next=readProgress(text,preview);
+  const next=prepareProgress(readProgress(text));
   // Write first: a full/blocked store must not destroy the running session.
   try{localStorage.setItem(saveKey,JSON.stringify(next));}catch{storageAvailable=false;throw new Error('浏览器无法保存导入进度，当前进度已保留。请允许本地存储后重试。');}
   configureJourney(next.seed);Object.keys(state).forEach(key=>delete state[key]);Object.assign(state,prepareProgress(next));
@@ -95,7 +99,4 @@ export function importProgress(text){
 export function report(){return {title:'电脑小镇 · 岛屿冒险学习报告',seed:state.seed,exportedAt:new Date().toISOString(),startedAt:state.startedAt,completed:state.completed.length,total:taskIds.length,missionCount,completedMissions:levels.flatMap(l=>l.workshops).filter(w=>w.tasks.every(completed)).length,targetMinutes,challengesPerMinute,estimatedChallengeMinutes:missionCount/challengesPerMinute,xp:xp(),totalXP,activeSeconds:state.seconds,graduated:state.graduated,
   islands:levels.map(level=>({name:level.name,minutes:level.minutes,completed:levelComplete(level),workshops:level.workshops.map(w=>({name:w.name,theme:w.theme,completed:w.tasks.every(completed)})),tasks:level.tasks.map(id=>({name:tasks[id].title,skill:tasks[id].skill,completed:completed(id),attempts:state.attempts[id]||0,finishedAt:state.finishedAt[id]||null}))})),
   stations:stations.map(s=>({name:s.name,completed:stationCount(s.id),total:stationTasks(s.id).length}))};}
-export function download(data,name,type='text/plain;charset=utf-8'){
-  const url=URL.createObjectURL(data instanceof Blob?data:new Blob([data],{type}));
-  const link=document.createElement('a');link.href=url;link.download=name;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
-}
+export {download} from './download.js';

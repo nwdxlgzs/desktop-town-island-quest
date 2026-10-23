@@ -49,6 +49,19 @@ test('copy preserves originals; failed batches do not overwrite or partly move f
   assert.equal(fs.matches('备份',[0,1],true),false);assert.equal(fs.transfer(['file-1'],dest.id,true),null);assert.equal(fs.matches('备份',[0,2],true),false,'extra files must be corrected');
 });
 
+test('folder transfers recurse, preserve original identities, and reject cycles atomically',()=>{
+  const fs=createPracticeFiles(['来源.txt','保留.csv']),a=fs.folder('root'),b=fs.folder(a.id),dest=fs.folder('root');
+  fs.rename(a.id,'素材');fs.rename(b.id,'子目录');fs.rename(dest.id,'目标');fs.transfer(['file-0'],b.id);
+  const before=JSON.stringify([...fs.entries]);
+  assert.ok(fs.transfer([a.id],b.id));assert.ok(fs.transfer([a.id],a.id,true));assert.equal(JSON.stringify([...fs.entries]),before);
+  assert.equal(fs.transfer([a.id,b.id,'file-0'],dest.id,true),null);
+  const copied=fs.list(dest.id);assert.equal(copied.length,1);assert.equal(copied[0].name,'素材');
+  const nested=fs.list(copied[0].id)[0],file=fs.list(nested.id)[0];assert.equal(file.name,'来源.txt');assert.equal(file.source,'file-0');assert.notEqual(file.id,'file-0');
+  assert.equal(fs.entries.get('file-0').parent,b.id);
+  assert.equal(fs.transfer([b.id],'root'),null);assert.equal(fs.entries.get('file-0').parent,b.id);
+  assert.equal(fs.list(a.id).length,0);
+});
+
 test('all course exercises have specific, resolved guidance and file tasks teach real transfers',()=>{
   const kinds=new Set();
   for(const id of taskIds){const task=tasks[id],steps=exerciseSteps(task);kinds.add(task.kind);assert.ok(steps.length>0,id);assert.ok(task.context,id+' has a scenario');

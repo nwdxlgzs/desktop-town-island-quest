@@ -1,6 +1,6 @@
 import {escapeHTML as esc,icon} from './icons.js';
 import {createPracticeBrowser,queryText} from './practice-browser.js';
-import {download} from './state.js';
+import {download} from './download.js';
 
 export function mountBrowserExercise(kind,root,p,{on,finish,tell,shortcut,step,resetRequired}){
   const browser=createPracticeBrowser(p),targets=p.targetIds||['source'],bookmarks=[],downloads=[],read=new Set(),reopened=new Set();

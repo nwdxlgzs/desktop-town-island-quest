@@ -4,7 +4,7 @@ import './progress.css';
 import { mountProgressUI } from './progress-ui.js';
 import { icon, escapeHTML } from './icons';
 import { stations, tasks, taskIds, totalXP, levels, targetMinutes, missionCount } from './curriculum.js';
-import { state, storageAvailable, persist, completed, xp, nextTask, finishTask, recordAttempt, report, resetState, download, levelComplete, visitLevel, canSail, travelProgress, exportProgress, importProgress } from './state.js';
+import { state, storageAvailable, persist, completed, xp, nextTask, finishTask, recordAttempt, report, resetState, download, levelComplete, visitLevel, canSail, travelProgress, exportProgress, importProgress, unlockAllContent } from './state.js';
 import { createLayout } from './level-layout.js';
 import { createWorld } from './world.js';
 import { mountExercise } from './exercises.js';
@@ -16,11 +16,11 @@ import { createOnboarding } from './onboarding.js';
 import { createCreditGuard } from './credit-guard.js';
 import { createSessionFlow,useSessionStep,cancelSession,dropSessionStep } from './session-flow.js';
 import { failedEvent,stopClass,stoppedFlag,roleAttribute,alertRole,stoppedMarkup,appSelector } from './check-strings.js';
-import { preview } from './state.js';
 import { mountTeachingLibrary } from './teaching-library.js';
 import { installKonamiCode } from './konami-code.js';
 
 const app=document.querySelector(appSelector);
+const teachingTitle=`全题型教学 · ${new Set(taskIds.map(id=>tasks[id].kind)).size} 种`;
 app.innerHTML=`
   <header class="topbar">
     <a class="brand" href="#" aria-label="电脑小镇 · 岛屿探索"><span class="brand-logo">${icon('monitor',25)}<i></i></span><span><b>电脑小镇</b><small>岛屿探索 · ISLAND QUEST</small></span></a>
@@ -42,6 +42,7 @@ app.innerHTML=`
         <div class="explore-hud"><button class="island-route-toggle" id="island-route" aria-label="打开岛屿航线" aria-haspopup="dialog" title="岛屿航线">${icon('map',19)}<span>岛屿航线</span></button><div id="explore-objective"></div><div><button id="explore-next">寻找星图</button><button id="explore-journal" aria-label="打开航海收藏册" title="航海收藏册">${icon('book',17)}</button></div></div>
         <button class="world-marker boat-marker" id="boat-marker" aria-label="前往小船">${icon('navigation',15)}<b>码头小船</b></button>
         <div class="world-tools"><button class="icon-button" id="progress-world" aria-label="航线与进度" title="航线与进度">${icon('save',18)}</button><button class="icon-button" id="quality-settings" aria-label="画面设置" title="画面设置">${icon('settings',18)}</button><button class="icon-button" id="sound-toggle" aria-pressed="${state.sound}" aria-label="切换音效" title="音效">${icon(state.sound?'sound':'mute',19)}</button><button class="icon-button" id="music-toggle" aria-pressed="${state.music}" aria-label="切换背景音乐" title="舒缓音乐">${icon(state.music?'music':'music-off',19)}</button><button class="icon-button" id="fullscreen" aria-label="进入游戏全屏" title="游戏全屏">${icon('fullscreen',18)}</button><button class="icon-button" id="overview-camera" aria-label="查看全岛" title="查看全岛">${icon('map',17)}</button><button class="icon-button" id="reset-camera" aria-label="恢复地图视角" title="恢复视角">${icon('reset',17)}</button><button class="icon-button" id="map-help" aria-label="地图操作说明" title="地图操作">${icon('help',18)}</button></div>
+        <div class="return-to-start" id="return-to-start" role="status" hidden><p>找不到返回乘船点的路线，可以回到本岛出发点脱困。</p><button class="primary" id="reset-position">回到本岛出发点</button><small>保留答题和收藏进度</small></div>
         <div class="voyage-banner" id="voyage-banner" role="status" hidden><span class="voyage-line"></span><b id="voyage-title">小船正在启航</b><span>让风带你去下一座岛</span></div>
       </div>
       <div class="map-instructions" id="map-instructions"><span class="map-default">${icon('navigation',15)}<span id="interaction-hint">点击整个工坊或 NPC · 靠近后按 E · 滚轮缩放 / 中键拖图 / 右键环视</span></span><div class="toast" id="toast" role="status" aria-live="polite"></div></div>
@@ -54,7 +55,7 @@ app.innerHTML=`
   <div class="confetti-container" id="confetti-container" aria-hidden="true"></div>`;
 
 let world=null,cleanupExercise=null,modalOpen=false,restoreFocus=null,toastTimer=null,audio=null,pendingTravel=null,explorationUI=null,creditGuard=null,clockTimer=null,gameStopped=false,taskStep=null;
-const removeKonamiCode=installKonamiCode(document,{enabled:()=>!gameStopped&&!preview,activate(){persist();location.hash='BYPASS';}});
+const removeKonamiCode=installKonamiCode(document,{enabled:()=>!gameStopped&&!state.unlockedMode,activate(){const saved=unlockAllContent();syncTeachingLibrary();updateProgress();toast(saved?'全部岛屿、题目、收藏与教学已解锁，进度已保存。':'本次已解锁全部内容，但浏览器无法自动保存，请及时导出进度。');}});
 const music=createMusicController({enabled:state.music});
 const modal=document.querySelector('#modal'),layer=document.querySelector('#modal-layer');
 const onboarding=createOnboarding({isComplete:()=>state.onboardingVersion===1,onComplete(){state.onboardingVersion=1;persist();},isFullscreen:()=>document.body.classList.contains('immersive-mode')});
@@ -143,25 +144,28 @@ function openTask(id){if(gameStopped||world?.isTraveling()||!currentLevel().task
   }});
 }
 const showGuide=mountGuide({showModal,icon,closeModal,onTour:()=>onboarding.start(true),creditMarkup:()=>creditGuard.markup,onMount:()=>creditGuard.watchGuide(modal)});
-if(preview){
+function syncTeachingLibrary(){
+  if(!state.unlockedMode){document.querySelector('#teaching-library-nav')?.remove();document.querySelector('#teaching-library-world')?.remove();return;}if(document.querySelector('#teaching-library-nav'))return;
   const showTeachingLibrary=()=>{
     if(gameStopped||world?.isTraveling())return;
-    showModal(`<div class="standard-modal-header"><div><span class="modal-icon">${icon('book',23)}</span><h2 id="modal-title">全题型教学 · 40 种</h2></div><button class="icon-button" data-close aria-label="关闭全题型教学">${icon('close',21)}</button></div><div class="teaching-library" id="teaching-library"></div>`,'lesson-modal');
+    showModal(`<div class="standard-modal-header"><div><span class="modal-icon">${icon('book',23)}</span><h2 id="modal-title">${teachingTitle}</h2></div><button class="icon-button" data-close aria-label="关闭全题型教学">${icon('close',21)}</button></div><div class="teaching-library" id="teaching-library"></div>`,'lesson-modal');
     cleanupExercise=mountTeachingLibrary(modal.querySelector('#teaching-library'),{tasks,taskIds,capture:()=>world?.capture()||''});
   };
-  const button=document.createElement('button');button.id='teaching-library-nav';button.className='nav-button';button.innerHTML=`${icon('book',18)}全题型教学 · 40 种`;
+  const button=document.createElement('button');button.id='teaching-library-nav';button.className='nav-button';button.innerHTML=`${icon('book',18)}${teachingTitle}`;
   document.querySelector('.main-nav').append(button);
   button.addEventListener('click',showTeachingLibrary);
-  const worldButton=document.createElement('button');worldButton.id='teaching-library-world';worldButton.className='icon-button';worldButton.title='全题型教学 · 40 种';worldButton.setAttribute('aria-label','全题型教学 · 40 种');worldButton.innerHTML=icon('book',19);worldButton.addEventListener('click',showTeachingLibrary);document.querySelector('.world-tools').prepend(worldButton);
+  const worldButton=document.createElement('button');worldButton.id='teaching-library-world';worldButton.className='icon-button';worldButton.title=teachingTitle;worldButton.setAttribute('aria-label',teachingTitle);worldButton.innerHTML=icon('book',19);worldButton.addEventListener('click',showTeachingLibrary);document.querySelector('.world-tools').prepend(worldButton);
 }
+syncTeachingLibrary();
 function showReport(){const data=report();showModal(`<div class="standard-modal-header"><div><span class="modal-icon">${icon('report',24)}</span><h2 id="modal-title">你的航行学习报告</h2></div><button class="icon-button" data-close aria-label="关闭报告">${icon('close',21)}</button></div><div class="report-body"><div class="report-hero"><span class="report-trophy">${icon('trophy',40)}</span><div><h3>${state.graduated?'电脑操作小达人，毕业啦！':'每一座岛，都留下了进步。'}</h3><p>${state.graduated?'你已经掌握全部本领。下一程，继续勇敢探索！':'完成本岛的任务，乘船继续探索。'}</p></div></div><div class="report-stats"><div><strong>${data.completed}<small> / ${taskIds.length}</small></strong><span>完成操作步骤</span></div><div><strong>${data.xp}<small> XP</small></strong><span>积累经验</span></div><div><strong>${levels.filter(levelComplete).length}<small> / ${levels.length}</small></strong><span>完成岛屿</span></div><div><strong>${Math.floor(data.activeSeconds/60)}<small> 分钟</small></strong><span>探索时间</span></div></div><div class="report-stations">${levels.map((level,i)=>{const s=stations.find(s=>s.id===level.workshops[0].theme);return `<details ${i===state.currentLevel?'open':''}><summary><span style="color:${s.color};background:${s.pale}">${icon(s.icon,20)}</span><b>${escapeHTML(level.name)}</b><small>${level.tasks.filter(completed).length} / ${level.tasks.length}</small>${icon('next',16)}</summary><div>${level.tasks.map(id=>`<p class="report-task ${completed(id)?'done':''}">${icon(completed(id)?'check':'target',16)}<b>${escapeHTML(tasks[id].title)}</b><small>${completed(id)?'已掌握':'待探索'}</small></p>`).join('')}</div></details>`;}).join('')}</div><p class="report-note">${icon('checks',16)}${data.missionCount} 个工坊任务，共 ${data.total} 个操作步骤；按每分钟 ${data.challengesPerMinute} 个工坊安排，目标 ${data.estimatedChallengeMinutes} 分钟。报告包含各岛任务、练习次数与完成时间。</p><div class="report-actions"><button class="text-button danger" id="reset-progress">${icon('reset',16)}重新开始</button><button class="secondary" id="report-progress">${icon('save',17)}导入 / 导出进度</button><button class="secondary" id="export-report">${icon('download',17)}导出学习报告</button><button class="primary" id="continue-adventure">返回岛屿 ${icon('arrow',17)}</button></div></div>`,'report-modal');modal.querySelector('#export-report').addEventListener('click',()=>download(JSON.stringify(report(),null,2),'电脑小镇学习报告.json','application/json;charset=utf-8'));modal.querySelector('#continue-adventure').addEventListener('click',closeModal);modal.querySelector('#reset-progress').addEventListener('click',()=>showProgress(true));modal.querySelector('#report-progress').addEventListener('click',()=>showProgress());}
 function showProgress(startNew=false){
   showModal(`<div class="standard-modal-header"><div><span class="modal-icon">${icon('save',23)}</span><h2 id="modal-title">航线与进度</h2></div><button class="icon-button" data-close aria-label="返回岛屿">${icon('close',21)}</button></div><div class="progress-body" id="progress-body"></div>`,'progress-modal');
-  cleanupExercise=mountProgressUI(modal.querySelector('#progress-body'),{state,preview,exportProgress,download,startNew,onImport(text){importProgress(text);location.reload();},onRestart(seed){resetState(seed);if(persist())location.reload();else{pendingTravel=null;const layout=createLayout(currentLevel(),state.seed);world?.loadLevel(layout);renderIsland(layout);closeModal();toast('新航线已开始，但浏览器无法自动保存，请及时导出进度。');}}});
+  cleanupExercise=mountProgressUI(modal.querySelector('#progress-body'),{state,exportProgress,download,startNew,onImport(text){importProgress(text);location.reload();},onRestart(seed){resetState(seed);if(persist())location.reload();else{pendingTravel=null;const layout=createLayout(currentLevel(),state.seed);world?.loadLevel(layout);renderIsland(layout);syncTeachingLibrary();closeModal();onboarding.start();toast('新航线已开始，但浏览器无法自动保存，请及时导出进度。');}}});
 }
 const whenAnchored=fn=>()=>{if(!gameStopped&&!world?.isTraveling())fn();};
 document.querySelector('#island-route').addEventListener('click',showRoute);
 for(const id of ['progress-nav','progress-world'])document.querySelector(`#${id}`).addEventListener('click',whenAnchored(()=>showProgress()));
+document.querySelector('#reset-position').addEventListener('click',whenAnchored(()=>world?.resetPosition()));
 document.querySelector('#boat-marker').addEventListener('click',whenAnchored(()=>{pendingTravel=null;if(world)world.goToBoat();else board();}));
 for(const id of ['guide-nav','quick-guide','map-help'])document.querySelector(`#${id}`).addEventListener('click',whenAnchored(showGuide));document.querySelector('#report-nav').addEventListener('click',whenAnchored(showReport));document.querySelector('#map-nav').addEventListener('click',whenAnchored(()=>{closeModal();world?.resetView();}));document.querySelector('.brand').addEventListener('click',e=>{e.preventDefault();if(!world?.isTraveling()){closeModal();world?.resetView();}});document.querySelector('#overview-camera').addEventListener('click',whenAnchored(()=>world?.toggleOverview()));document.querySelector('#reset-camera').addEventListener('click',whenAnchored(()=>world?.resetView()));
 document.querySelector('#sound-toggle').addEventListener('click',()=>{state.sound=!state.sound;persist();const el=document.querySelector('#sound-toggle');el.innerHTML=icon(state.sound?'sound':'mute',19);el.setAttribute('aria-label',state.sound?'关闭音效':'开启音效');el.setAttribute('aria-pressed',String(state.sound));});
@@ -176,7 +180,7 @@ document.querySelector('#explore-next').addEventListener('click',whenAnchored(()
 document.querySelector('#explore-journal').addEventListener('click',whenAnchored(()=>explorationUI.journal()));
 creditGuard=createCreditGuard({onViolation(){cancelSession(advance);stopGame();}});
 if(creditGuard.startCreditGuard()&&useSessionStep(advance(0,state.seed),0,state.seed)){
-world=createWorld(document.querySelector('#world-container'),{layout:islandLayout,passage:phase=>useSessionStep(advance(phase,state.currentLevel),phase,state.currentLevel),qualitySettings:state.quality,onQuality:p=>{const el=document.querySelector('#quality-settings');el.title=`画面设置 · ${Math.round(p.pixelRatio*100)}%${p.preset==='low'?' · 流畅低配':p.stage?' · 已自动减负':' · 自动适配'}`;el.dataset.stage=p.stage;},onNotice:toast,onExplore:item=>explorationUI.interact(item),isPaused:()=>modalOpen||onboarding.active,onInteract:openStation,onBoard:board,onReady(){document.querySelector('#world-loading')?.remove();},onError(){document.querySelector('#world-loading').innerHTML=`${icon('monitor',40)}<b>此设备暂不能渲染 3D 地图</b><p>仍可通过工作区按钮练习、完成后启航。</p><p>可尝试关闭浏览器后，在启动参数中加入 <code>--ignore-gpu-blocklist</code>，再打开游戏。</p>`;document.querySelector('#world-container').classList.add('fallback');},onTravelState(traveling){document.querySelector('#voyage-banner').hidden=!traveling;app.classList.toggle('is-traveling',traveling);document.querySelector('#station-focus').inert=traveling;document.querySelector('#station-list').inert=traveling;document.querySelector('#exploration-bar').inert=traveling;document.querySelector('.explore-hud').inert=traveling;}});
+world=createWorld(document.querySelector('#world-container'),{layout:islandLayout,passage:phase=>useSessionStep(advance(phase,state.currentLevel),phase,state.currentLevel),qualitySettings:state.quality,onQuality:p=>{const el=document.querySelector('#quality-settings');el.title=`画面设置 · ${Math.round(p.pixelRatio*100)}%${p.preset==='low'?' · 流畅低配':p.stage?' · 已自动减负':' · 自动适配'}`;el.dataset.stage=p.stage;},onNotice:toast,onStranded:stranded=>{document.querySelector('#return-to-start').hidden=!stranded;},onExplore:item=>explorationUI.interact(item),isPaused:()=>modalOpen||onboarding.active,onInteract:openStation,onBoard:board,onReady(){document.querySelector('#world-loading')?.remove();},onError(){document.querySelector('#world-loading').innerHTML=`${icon('monitor',40)}<b>此设备暂不能渲染 3D 地图</b><p>仍可通过工作区按钮练习、完成后启航。</p><p>可尝试关闭浏览器后，在启动参数中加入 <code>--ignore-gpu-blocklist</code>，再打开游戏。</p>`;document.querySelector('#world-container').classList.add('fallback');},onTravelState(traveling){document.querySelector('#voyage-banner').hidden=!traveling;app.classList.toggle('is-traveling',traveling);document.querySelector('#station-focus').inert=traveling;document.querySelector('#station-list').inert=traveling;document.querySelector('#exploration-bar').inert=traveling;document.querySelector('.explore-hud').inert=traveling;}});
 renderIsland(islandLayout);
 onboarding.start();
 if(import.meta.env.DEV)window.__quest={state,levels,tasks,get world(){return world;},get layout(){return islandLayout;},refresh:renderIsland,openTask};

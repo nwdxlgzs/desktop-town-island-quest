@@ -1,5 +1,5 @@
 import { icon, escapeHTML } from './icons';
-import { download } from './state';
+import { download } from './download.js';
 import { tasks } from './curriculum.js';
 import { mountOffice } from './office-exercises.js';
 import { mountExerciseGuide } from './exercise-guide.js';
@@ -12,7 +12,7 @@ const field = (id,label,value='',placeholder='',readonly=false) => `<label class
 const deskHeader=(iconName,title,subtitle)=>`<div class="desk-heading"><span>${icon(iconName,20)} ${title}</span><small>${subtitle}</small></div>`;
 
 export function mountExercise(taskId, root, { success, feedback, capture, sound, teaching=true }) {
-  const task=tasks[taskId],id=task.kind,p=task.params||{},recipe=p.recipe||'查来源，看日期，核实重要信息。',selectionText=p.text||'重要信息还要查证';
+  const task=typeof taskId==='object'?taskId:tasks[taskId],id=task.kind,p=task.params||{},recipe=p.recipe||'查来源，看日期，核实重要信息。',selectionText=p.text||'重要信息还要查证';
   const controller=new AbortController();const options={signal:controller.signal};let done=false,timers=[],coach=null,restarted=null,demo=null;const guideDone=new Set();
   function step(index,good=true){const changed=good?!guideDone.has(index):guideDone.has(index);if(!changed)return;good?guideDone.add(index):guideDone.delete(index);coach?.update();}
   function on(el,event,fn,extra={}){el?.addEventListener(event,fn,{...options,...extra});}

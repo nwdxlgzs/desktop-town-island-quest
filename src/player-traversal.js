@@ -15,12 +15,27 @@ export function createPlayerTraversal(layout,findPath){
     }
     searches++;const ok=findPath(from,to).length>0;permissions.unshift({from:{...from},to:{...to},ok});if(permissions.length>24)permissions.pop();return ok;
   }
-  return {canMove(from,to,jumpOrigin=null){
+  function canMove(from,to,jumpOrigin=null){
     if(walk(from,to))return true;
     const limits={up:jumpOrigin?extraStepHeight:maxStepHeight,down:extraStepHeight};
     if(!clearSegment(from,to,blocked,(a,b)=>canWalkSegment(layout,a,b,limits)))return false;
     // One jump cannot chain several extra-height risers into a cliff climb.
     if(jumpOrigin&&Math.abs(walkingHeightAt(layout,to.x,to.z)-walkingHeightAt(layout,jumpOrigin.x,jumpOrigin.z))>extraStepHeight+1e-5)return false;
     return reachable(jumpOrigin||from,to);
+  }
+  return {canMove,advance(from,to,jumpOrigin=null){
+    if(canMove(from,to,jumpOrigin))return {...to};
+    // Slide along free axes; a zero-length slide is never successful movement.
+    let point={...from};
+    const x={x:to.x,z:point.z};if(Math.abs(x.x-point.x)>1e-7&&canMove(point,x,jumpOrigin))point=x;
+    const z={x:point.x,z:to.z};if(Math.abs(z.z-point.z)>1e-7&&canMove(point,z,jumpOrigin))point=z;
+    if(Math.hypot(point.x-from.x,point.z-from.z)>1e-7)return point;
+    // Slow frames can request a stride longer than the space left at a corner.
+    // Stop at the last safe position, rather than discarding the entire stride.
+    const distance=Math.hypot(to.x-from.x,to.z-from.z);if(distance<.001)return null;
+    const at=t=>({x:from.x+(to.x-from.x)*t,z:from.z+(to.z-from.z)*t});
+    let low=Math.min(1,.001/distance),high=1;if(!canMove(from,at(low),jumpOrigin))return null;
+    for(let i=0;i<8;i++){const mid=(low+high)/2;if(canMove(from,at(mid),jumpOrigin))low=mid;else high=mid;}
+    return at(low);
   },get searches(){return searches;}};
 }
